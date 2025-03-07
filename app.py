@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from elasticsearch import Elasticsearch
 import logging
 import config  # Import the config file
+import argparse
 
 app = Flask(__name__)
 
@@ -38,6 +39,9 @@ def get_business_full_name():
             "term": {
                 "businessFullName.keyword": business_full_name
             }
+        },
+        "_source": {
+            "excludes": ["pages"]  # 排除 pages 字段
         }
     }
 
@@ -119,12 +123,22 @@ def get_query():
                 "filter": filter_conditions,  # 添加筛选条件
             }
         },
-        "size": 100  # 指定返回的记录数量
-
+        "size": 100,  # 指定返回的记录数量
+        "_source": {
+            "excludes": ["pages"]  # 排除 pages 字段
+        }
     }
     # 执行查询
     response = es.search(index="web_content", body=query)
     return jsonify(response['hits']['hits'])
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    parser = argparse.ArgumentParser(description='Run the server.')
+    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host to run the server on')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the server on')
+    args = parser.parse_args()
+
+    print(f"Starting server on {args.host}:{args.port}")
+    # Your server start logic here
+
+    app.run(debug=True, port=args.port, host=args.host)
