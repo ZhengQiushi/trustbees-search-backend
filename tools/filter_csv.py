@@ -7,7 +7,7 @@ my_lat = 40.6524315  # 示例：纽约市的纬度
 my_lon = -74.1282894  # 示例：纽约市的经度
 
 	
-path = "/home/zhengqiushi/trustbees-search/tools/"
+path = "/Users/lion/Project/trustbees-search-backend/tools/"
 # 读取 CSV 文件
 df = pd.read_csv(path + "studio_query_results.csv")
 

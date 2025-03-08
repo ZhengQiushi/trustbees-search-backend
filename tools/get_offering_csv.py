@@ -6,7 +6,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import config
 
-name = "web_content"
+name = "offerings_v2"
 
 # 初始化 Elasticsearch 客户端
 client = Elasticsearch(
@@ -14,19 +14,12 @@ client = Elasticsearch(
     api_key=config.ELASTICSEARCH_API_KEY
 )
 
-# 定义要提取的字段
-fields = [
-    "businessFullName",
-    "contactPhone",
-    "franchise",
-    "googleReview",
-    "googleReviewCount",
-    "googleReviewRating",
-    "interest",
-    "locationType",
-    "mainOfferingAddress",
-    "website"
-]
+# 获取索引的映射
+mapping = client.indices.get_mapping(index=name)
+properties = mapping[name]['mappings']['properties']
+
+# 动态提取所有字段
+fields = list(properties.keys())
 
 # 查询所有数据
 response = client.search(
@@ -36,7 +29,7 @@ response = client.search(
             "match_all": {}
         },
         "_source": fields,
-        "size": 10000  # 你可以根据需要调整这个大小
+        "size": 1000  # 你可以根据需要调整这个大小
     }
 )
 
@@ -44,7 +37,16 @@ response = client.search(
 data = []
 for hit in response['hits']['hits']:
     source = hit['_source']
-    row = {field: source.get(field, None) for field in fields}
+    row = {}
+    for field in fields:
+        value = source.get(field, None)
+        # 如果值是字典并且包含 'text' 键，则只保留 'text' 的值
+        if "Embed" in field:
+            continue
+        if isinstance(value, dict) and 'text' in value:
+            row[field] = value['text']
+        else:
+            row[field] = value
     data.append(row)
 
 # 将数据转换为 DataFrame
