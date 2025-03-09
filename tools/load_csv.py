@@ -1,7 +1,7 @@
 import pandas as pd
 import sys, os
 from elasticsearch import Elasticsearch, helpers
-import ast
+import json, ast
 from elasticsearch.helpers import streaming_bulk
 
 # 将项目根目录添加到 sys.path
@@ -15,8 +15,7 @@ client = Elasticsearch(
 )
 
 # 读取 CSV 文件
-csv_file = '/Users/lion/Project/trustbees-search-backend/tools/offerings.csv'
-
+csv_file = '/Users/lion/Project/trustbees-search-backend/merged_test_data.csv'
 
 df = pd.read_csv(csv_file)
 
@@ -24,18 +23,26 @@ df = pd.read_csv(csv_file)
 df = df.where(pd.notnull(df), None)
 
 # 定义 safe_literal_eval 函数
-def safe_literal_eval(value):
+def safe_literal_eval(value, field_name=None):
     if value is None or value == '' or pd.isna(value):  # 处理 NaN 值
         return None
     try:
+        # 特判处理 ageGroup、location 和 schedule 字段
+        if field_name in ['ageGroup', 'location', 'schedule']:
+            if isinstance(value, str):
+                # 修复单引号问题
+                value = value.replace("'", '"')
+                # 修复 None -> null
+                value = value.replace("None", "null")
+                return json.loads(value)  # 尝试将字符串 JSON 转换为字典
+            
         return ast.literal_eval(value)  # 尝试将字符串 JSON 转换为字典
     except (ValueError, SyntaxError):
         return value  # 如果转换失败，返回原始值
 
 # 对每一列应用 safe_literal_eval
 for col in df.columns:
-    df[col] = df[col].apply(safe_literal_eval)
-
+    df[col] = df[col].apply(lambda x: safe_literal_eval(x, field_name=col))
 
 # 将 DataFrame 转换为字典列表
 records = df.to_dict(orient='records')
@@ -44,16 +51,6 @@ records = df.to_dict(orient='records')
 index_name = 'offerings_v2'
 
 # 准备批量插入的数据
-# 准备批量插入的数据
-actions = [
-    {
-        "_index": index_name,
-        "_source": record
-    }
-    for record in records
-]
-
-# 分批次插入数据
 def gendata():
     for record in records:
         yield {
@@ -64,7 +61,7 @@ def gendata():
 # 使用 streaming_bulk 进行分批次插入
 try:
     success_count = 0
-    for ok, response in streaming_bulk(client, gendata(), chunk_size=1000):  # 每批次 500 条
+    for ok, response in streaming_bulk(client, gendata(), chunk_size=1000):  # 每批次 1000 条
         if not ok:
             print(f"文档插入失败: {response}")
         else:
@@ -75,15 +72,3 @@ except Exception as e:
     if hasattr(e, 'errors'):
         for error in e.errors:
             print(f"错误详情: {error}")
-
-
-# # 使用 helpers.bulk 进行批量插入
-# try:
-#     response = helpers.bulk(client, actions)
-#     print(f"成功导入 {response[0]} 条数据！")
-# except Exception as e:
-#     print(f"数据导入失败: {e}")
-#     # 打印详细的错误信息
-#     if hasattr(e, 'errors'):
-#         for error in e.errors:
-#             print(f"错误详情: {error}")

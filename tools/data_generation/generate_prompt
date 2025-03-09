@@ -1,0 +1,217 @@
+
+### 键值对（KV Pair）及解释
+-1. RSVP	
+   - 类型：String  
+   - 值：`""`  
+   - 解释：报名截止须知。
+
+0. RSVPDeadline	
+   - 类型：Date
+   - 值：`"2023-07-17"`  
+   - 解释：报名截止日期。
+
+1. **activity（活动类目）**  
+   - 类型：String  
+   - 值：`"Martial Arts"`  
+   - 解释：活动类目为“武术”。
+
+2. **activityCategory（活动分类）**  
+   - 类型：String  
+   - 值：`"Sports"`  
+   - 解释：活动分类为“体育”。
+
+3. **ageGroup（活动适宜年龄，一个年龄区间）**  
+   - 类型：JSON  
+   - 值：`"{'gte': 0, 'lte': 100}"`  
+   - 解释：活动适合的年龄区间为 0 到 100 岁。
+
+4. **businessFullName（机构全名）**  
+   - 类型：String  
+   - 值：`"AllStar Martial Arts"`  
+   - 解释：活动由“AllStar Martial Arts”机构提供。
+
+5. **campAmenities（营地设施）**  
+   - 类型：String  
+   - 值：`""`  
+   - 解释：未提供营地设施信息。
+
+6. **campSessionOptions（营地课程选项）**  
+   - 类型：String  
+   - 值：`"day"`  
+   - 解释：营地课程选项为“日间课程”。
+
+7. **facility（设施类型）**  
+   - 类型：String  
+   - 值：`"indoor"`  
+   - 解释：活动设施为“室内”。
+
+8. **hyperlink（超链接）**  
+   - 类型：List  
+   - 值：`["Sign up today: https://matthewstkd.com/summer-camp/?tve=true&tcbf=ba183f3b79?tve=true&tcbf=ba183f3b79"]`  
+   - 解释：活动报名链接。
+
+9. **location（地点信息）**  
+   - 类型：JSON  
+   - 值：`"{'name': '1166 West Chestnut St, Union, NJ, 07083, USA', 'geo_info': {'lon': -74.2862706, 'lat': 40.6924411}}"`  
+   - 解释：活动地点为“1166 West Chestnut St, Union, NJ, 07083, USA”，地理坐标为经度 -74.2862706，纬度 40.6924411。
+
+10. **locationDisplayName（地点显示名称）**  
+    - 类型：String  
+    - 值：`"Union, NJ"`  
+    - 解释：地点显示名称为“Union, NJ”。
+
+11. **locationType（地点类型）**  
+    - 类型：String  
+    - 值：`"in_person"`  
+    - 解释：活动为线下举办。
+
+12. **lunchIncluded（是否包含午餐）**  
+    - 类型：String  
+    - 值：`"no"`  
+    - 解释：活动不包含午餐。
+
+13. **name（活动名称）**  
+    - 类型：String  
+    - 值：`"Summer Camp"`  
+    - 解释：活动名称为“夏令营”。
+
+14. **offeringInsightSummary（活动亮点摘要）**  
+    - 类型：String  
+    - 值：`"Includes martial arts workouts\nFeatures relay races and obstacle courses\nOffers early bird special pricing"`  
+    - 解释：活动亮点包括武术训练、接力赛和障碍赛，并提供早鸟优惠。
+
+15. **offeringName（活动名称）**  
+    - 类型：String  
+    - 值：`""`  
+    - 解释：未提供活动名称。
+
+16. **offeringType（活动类型）**  
+    - 类型：String  
+    - 值：`"Summer Camp"`  
+    - 解释：活动类型为“夏令营”。
+
+17. **pricing（价格信息）**  
+    - 类型：List  
+    - 值：`["$249 first child", "$25 off additional child", "Earlybird Before $199"]`  
+    - 解释：价格信息为“第一个孩子 249 美元，每增加一个孩子优惠 25 美元，早鸟价 199 美元”。
+
+18. **schedule（活动时间安排）**  
+    - 类型：JSON  
+    - 值：`"{'classDay': 'Monday, Tuesday, Wednesday, Thursday, Friday', 'endDate': '2023-07-21', 'durationSeason': None, 'time': '09:00-14:00', 'startDate': '2023-07-17', 'frequency': None, 'blackoutDate': None}"`  
+    - 解释：活动时间为 2023 年 7 月 17 日至 2023 年 7 月 21 日，每周一至周五，时间为 09:00-14:00。
+
+19. **skillLevel（技能等级）**  
+    - 类型：String  
+    - 值：`""`  
+    - 解释：未提供技能等级信息。
+
+20. **sourceLink（来源链接）**  
+    - 类型：String  
+    - 值：`"https://allstarbjj.com/summer-camp/"`  
+    - 解释：活动信息来源链接。
+
+21. **transportation（是否提供交通）**  
+    - 类型：String  
+    - 值：`"no"`  
+    - 解释：活动不提供交通服务。
+
+
+
+        prompt = f"""
+---
+
+**Role Definition**:  
+You are a data generator assistant. Your task is to generate synthetic test data for a summer camp registration system. The data should be realistic, diverse, and follow the provided CSV format strictly.
+
+**CSV Format Description**:  
+The CSV has 23 fields. Each field is described below:  
+1. **RSVP**: String, e.g., `""`  
+2. **RSVPDeadline**: Date, e.g., `"2023-07-17"`  
+3. **activity**: String, e.g., `"Martial Arts"`  
+4. **activityCategory**: String, e.g., `"Sports"`  
+5. **ageGroup**: JSON, e.g., `"{'gte': 0, 'lte': 100}"`  
+6. **businessFullName**: String, e.g., `"AllStar Martial Arts"`  
+7. **campAmenities**: String, e.g., `""`  
+8. **campSessionOptions**: String, e.g., `"day"`  
+9. **facility**: String, e.g., `"indoor"`  
+10. **hyperlink**: List, e.g., `["Sign up today: https://example.com"]`  
+11. **location**: JSON, e.g., `"{'name': '1166 West Chestnut St, Union, NJ, 07083, USA', 'geo_info': {'lon': -74.2862706, 'lat': 40.6924411}}"`  
+12. **locationDisplayName**: String, e.g., `"Union, NJ"`  
+13. **locationType**: String, e.g., `"in_person"`  
+14. **lunchIncluded**: String, e.g., `"no"`  
+15. **name**: String, e.g., `"Summer Camp"`  
+16. **offeringInsightSummary**: String, e.g., `"Includes martial arts workouts\nFeatures relay races and obstacle courses\nOffers early bird special pricing"`  
+17. **offeringName**: String, e.g., `""`  
+18. **offeringType**: String, e.g., `"Summer Camp"`  
+19. **pricing**: List, e.g., `["$249 first child", "$25 off additional child", "Earlybird Before $199"]`  
+20. **schedule**: JSON, e.g., `"{'classDay': 'Monday, Tuesday, Wednesday, Thursday, Friday', 'endDate': '2023-07-21', 'durationSeason': None, 'time': '09:00-14:00', 'startDate': '2023-07-17', 'frequency': None, 'blackoutDate': None}"`  
+21. **skillLevel**: String, e.g., `""`  
+22. **sourceLink**: String, e.g., `"https://example.com/summer-camp/"`  
+23. **transportation**: String, e.g., `"no"`
+
+**Output Requirements**:  
+- Generate a list of 100 records.  
+- Each record should be a dictionary with the 23 fields described above.  
+- Return only the list of dictionaries as a valid Python list. Do not include any explanations or additional text.  
+
+**Few-shot Examples**:  
+Here are 2 example records:  
+```python
+[
+    {
+        "RSVP": "",
+        "RSVPDeadline": "2023-07-17",
+        "activity": "Martial Arts",
+        "activityCategory": "Sports",
+        "ageGroup": "{'gte': 6, 'lte': 12}",
+        "businessFullName": "AllStar Martial Arts",
+        "campAmenities": "",
+        "campSessionOptions": "day",
+        "facility": "indoor",
+        "hyperlink": ["Sign up today: https://example.com"],
+        "location": "{'name': '1166 West Chestnut St, Union, NJ, 07083, USA', 'geo_info': {'lon': -74.2862706, 'lat': 40.6924411}}",
+        "locationDisplayName": "Union, NJ",
+        "locationType": "in_person",
+        "lunchIncluded": "no",
+        "name": "Summer Camp",
+        "offeringInsightSummary": "Includes martial arts workouts\nFeatures relay races and obstacle courses\nOffers early bird special pricing",
+        "offeringName": "",
+        "offeringType": "Summer Camp",
+        "pricing": ["$249 first child", "$25 off additional child", "Earlybird Before $199"],
+        "schedule": "{'classDay': 'Monday, Tuesday, Wednesday, Thursday, Friday', 'endDate': '2023-07-21', 'durationSeason': None, 'time': '09:00-14:00', 'startDate': '2023-07-17', 'frequency': None, 'blackoutDate': None}",
+        "skillLevel": "",
+        "sourceLink": "https://example.com/summer-camp/",
+        "transportation": "no"
+    },
+    {
+        "RSVP": "",
+        "RSVPDeadline": "2023-08-01",
+        "activity": "Coding Camp",
+        "activityCategory": "STEM",
+        "ageGroup": "{'gte': 8, 'lte': 14}",
+        "businessFullName": "Code Ninjas",
+        "campAmenities": "Computers, Snacks",
+        "campSessionOptions": "day",
+        "facility": "indoor",
+        "hyperlink": ["Sign up today: https://codeninjas.com/summer-camp"],
+        "location": "{'name': '123 Main St, Springfield, IL, 62701, USA', 'geo_info': {'lon': -89.650148, 'lat': 39.781721}}",
+        "locationDisplayName": "Springfield, IL",
+        "locationType": "in_person",
+        "lunchIncluded": "yes",
+        "name": "Summer Coding Camp",
+        "offeringInsightSummary": "Learn Python and Scratch\nBuild fun projects\nEarly bird discounts available",
+        "offeringName": "",
+        "offeringType": "Summer Camp",
+        "pricing": ["$299 first child", "$50 off additional child", "Earlybird Before $249"],
+        "schedule": "{'classDay': 'Monday, Wednesday, Friday', 'endDate': '2023-08-15', 'durationSeason': None, 'time': '10:00-15:00', 'startDate': '2023-08-01', 'frequency': None, 'blackoutDate': None}",
+        "skillLevel": "Beginner",
+        "sourceLink": "https://codeninjas.com/summer-camp",
+        "transportation": "no"
+    }
+]
+```
+
+**Task**:  
+Generate a list of 100 records following the format above. Return only the list of dictionaries as a valid Python list. Do not include any explanations or additional text.          
+        """
+

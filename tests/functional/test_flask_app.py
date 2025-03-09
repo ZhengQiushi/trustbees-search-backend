@@ -37,7 +37,8 @@ class FlaskAppTestCase(unittest.TestCase):
 
     def test_get_query(self):
         # 测试 GetQuery 接口
-        response = self.app.get('/GetQuery?query=Studio')
+        conditions = '{"page_len": 50}'
+        response = self.app.get(f'/GetQuery?query=Studio&conditions={conditions}')
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertIsInstance(data, list)  # 假设返回的是一个列表
