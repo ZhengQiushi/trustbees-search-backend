@@ -1,29 +1,37 @@
 from flask import Flask, request, jsonify
 from elasticsearch import Elasticsearch
 import logging
-import config  # Import the config file
 import argparse
-
-import pandas as pd
+from dotenv import dotenv_values
 
 app = Flask(__name__)
+
+# 解析命令行参数
+parser = argparse.ArgumentParser(description='Run the server.')
+parser.add_argument('--config', type=str, default='config.env', help='Path to the configuration file')
+args = parser.parse_args()
+
+# 加载配置文件
+config = dotenv_values(args.config)
 
 # 配置日志
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/query.log'),  # 日志写入文件
+        logging.FileHandler(config['LOG_FILE']),  # 日志写入文件
         # logging.StreamHandler()  # 日志输出到控制台
     ]
 )
 logger = logging.getLogger(__name__)
 
+
+
 # 连接到 Elasticsearch
 es = Elasticsearch(
-        config.ELASTICSEARCH_URL,
-        api_key=config.ELASTICSEARCH_API_KEY
-    )
+    config['ELASTICSEARCH_URL'],
+    api_key=config['ELASTICSEARCH_API_KEY']
+)
 
 # 接口1: 精确匹配 businessFullName
 @app.route('/GetBusinessFullName', methods=['GET'])
@@ -48,7 +56,7 @@ def get_business_full_name():
     }
 
     # 执行查询
-    response = es.search(index="web_content", body=query)
+    response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
     return jsonify(response['hits']['hits'])
 
 # 接口2: 模糊匹配，支持筛选条件
@@ -141,7 +149,7 @@ def get_query():
         }
     }
     # 执行查询
-    response = es.search(index="web_content", body=query)
+    response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
     return jsonify(response['hits']['hits'])
 
 
@@ -267,12 +275,13 @@ def get_offerings_text_query():
         "from": page_offset,  # 分页偏移量
         "size": page_len,     # 每页长度
         "_source": {
-            "includes": ["activity", "activityCategory", "offeringName", "businessFullName", "offeringInsightSummary"]  # 只返回必要的字段
+            "excludes": ["*Embeddings"]
+            # "includes": ["activity", "activityCategory", "offeringName", "businessFullName", "offeringInsightSummary"]  # 只返回必要的字段
         }
     }
 
     # 执行查询
-    response = es.search(index="offerings_v2", body=query)
+    response = es.search(index=config['ELASTICSEARCH_OFFERING'], body=query)
 
     # 处理返回结果，
     data = []
@@ -287,12 +296,5 @@ def get_offerings_text_query():
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run the server.')
-    parser.add_argument('--host', type=str, default='127.0.0.1', help='Host to run the server on')
-    parser.add_argument('--port', type=int, default=5000, help='Port to run the server on')
-    args = parser.parse_args()
-
-    print(f"Starting server on {args.host}:{args.port}")
-    # Your server start logic here
-
-    app.run(debug=True, port=args.port, host=args.host)
+    print(f"Starting server on {config['HOST']}:{config['PORT']}")
+    app.run(debug=True, port=config['PORT'], host=config['HOST'])
