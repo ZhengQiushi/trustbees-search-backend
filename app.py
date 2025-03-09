@@ -3,6 +3,10 @@ from elasticsearch import Elasticsearch
 import logging
 import argparse
 from dotenv import dotenv_values
+import utils
+import pandas as pd
+from utils.utils import *
+from datetime import datetime  # 导入 datetime 模块
 
 app = Flask(__name__)
 
@@ -57,7 +61,16 @@ def get_business_full_name():
 
     # 执行查询
     response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
-    return jsonify(response['hits']['hits'])
+    # 处理 interests 字段
+    hits = response['hits']['hits']
+
+    for hit in hits:  # 遍历所有记录
+        if 'interests' in hit['_source']:  # 检查是否存在 interests 字段
+            interests = hit['_source']['interests']
+            hit['_source']['interests'] = utils.transform_interests(interests)  # 转换 interests 字段
+    return jsonify(hits)
+
+
 
 # 接口2: 模糊匹配，支持筛选条件
 @app.route('/GetQuery', methods=['GET'])
@@ -153,147 +166,218 @@ def get_query():
     return jsonify(response['hits']['hits'])
 
 
-@app.route('/GetOfferingsTextQuery', methods=['GET'])
-def get_offerings_text_query():
-    # semantic 默认关闭
-    query_text = request.args.get('query')
-    conditions = request.args.get('conditions')  # 获取筛选条件
-    if not query_text:
-        return jsonify({"error": "query parameter is required"}), 400
+def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_search, age, camp_types, camp_options):
+    """构建 Elasticsearch 查询"""
+    query = {
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "multi_match": {
+                            "query": search,
+                            "fields": [
+                                "activity^5",
+                                "activityCategory^5",
+                                "offeringName^3",
+                                "businessFullName^1",
+                                "offeringInsightSummary^1"
+                            ],
+                            "type": "most_fields"
+                        }
+                    }
+                ],
+                "filter": [],
+                "should": []  # 用于处理 online 课程
+            },
+        },
+        "from": page_offset,  # 分页偏移量
+        "size": page_len,      # 每页长度
+        "_source": {
+            "excludes": ["*Embeddings"]  # 排除 Embeddings 字段
+        },
+        # 新增：按商家 ID 去重
+        # "collapse": {
+        #     "field": "businessFullName.keyword"  # 假设商家 ID 存储在 businessFullName 字段中
+        # }
+    }
 
-    # 记录日志
-    # logger.info(f"GetOfferingsTextQuery - query: {query_text}, conditions: {conditions}")
-
-    # 解析筛选条件
-    filter_conditions = []
-    page_offset = 0  # 默认偏移量
-    page_len = 15    # 默认每页长度
-    has_semantic = False  # 默认关闭语义检索
-
-    if conditions:
-        try:
-            conditions = eval(conditions)  # 将字符串转换为字典
-            if not isinstance(conditions, dict):
-                return jsonify({"error": "conditions must be a JSON object"}), 400
-
-            # 处理分页参数
-            if "page_offset" in conditions:
-                page_offset = int(conditions["page_offset"])
-            if "page_len" in conditions:
-                page_len = int(conditions["page_len"])
-
-            # 处理是否启用语义检索
-            if "has_semantic" in conditions:
-                has_semantic = bool(conditions["has_semantic"])
-
-            # 处理地点经纬度 + 距离筛选
-            if "location" in conditions and "distance" in conditions:
-                lat, lon = conditions["location"].get("lat"), conditions["location"].get("lon")
-                distance = conditions["distance"]
-                if lat and lon and distance:
-                    filter_conditions.append({
+    # 距离筛选（仅适用于 locationType 为 in_person）
+    if lat and lon and radius:
+        query["query"]["bool"]["should"].append({
+            "bool": {
+                "must": [
+                    {
                         "geo_distance": {
-                            "distance": distance,
+                            "distance": f"{radius}miles",
                             "location.geo_info": {
                                 "lat": lat,
                                 "lon": lon
                             }
                         }
-                    })
-
-            # 处理评价等级筛选
-            if "min_rating" in conditions:
-                min_rating = float(conditions["min_rating"])
-                filter_conditions.append({
-                    "range": {
-                        "googleReviewRating": {
-                            "gte": min_rating
+                    },
+                    {
+                        "term": {
+                            "locationType": "in_person"
                         }
                     }
-                })
-
-        except Exception as e:
-            return jsonify({"error": f"Invalid conditions format: {str(e)}"}), 400
-
-    # 构建基础查询
-    retrievers = [
-        {
-            "standard": {
-                "query": {
-                    "bool": {
-                        "must": [
-                            {
-                                "multi_match": {
-                                    "query": query_text,
-                                    "fields": [
-                                        "activity^5",
-                                        "activityCategory^5",
-                                        "offeringName^3",
-                                        "businessFullName^1",
-                                        "offeringInsightSummary^1"
-                                    ],
-                                    "type": "most_fields"  # 改为 most_fields，提升性能
-                                }
-                            }
-                        ],
-                        "filter": filter_conditions  # 确保 filter 条件被缓存
-                    }
-                }
-            }
-        }
-    ]
-
-    # 如果启用语义检索，则添加 semantic retriever
-    if has_semantic:
-        retrievers.append({
-            "standard": {
-                "query": {
-                    "bool": {
-                        "should": [
-                            {
-                                "semantic": {
-                                    "field": "activityEmbeddings",
-                                    "query": query_text
-                                }
-                            }
-                        ],
-                        "minimum_should_match": 1,
-                        "filter": filter_conditions  # 在 semantic retriever 中也应用相同的筛选条件
-                    }
-                }
+                ]
             }
         })
 
-    # 构建完整查询
-    query = {
-        "retriever": {
-            "rrf": {
-                "retrievers": retrievers,
-                "rank_window_size": page_len  # 设置为大于或等于 size 的值
-            }
-        },
-        "from": page_offset,  # 分页偏移量
-        "size": page_len,     # 每页长度
-        "_source": {
-            "excludes": ["*Embeddings"]
-            # "includes": ["activity", "activityCategory", "offeringName", "businessFullName", "offeringInsightSummary"]  # 只返回必要的字段
+    # 添加 online 课程的筛选条件
+    query["query"]["bool"]["should"].append({
+        "term": {
+            "locationType": "online"
         }
-    }
+    })
+
+    # 设置 minimum_should_match，确保至少满足一个 should 条件
+    query["query"]["bool"]["minimum_should_match"] = 1
+
+    # 详细筛选（仅当 is_detail_search 为 true 时）
+    if is_detail_search:
+        # 年龄筛选
+        if age:
+            query["query"]["bool"]["filter"].append({
+                "range": {
+                    "ageGroup": {
+                        "gte": age,  # ageGroup 的下限小于等于传入的 age
+                        "lte": age   # ageGroup 的上限大于等于传入的 age
+                    }
+                }
+            })
+        # Camp Type 筛选
+        if camp_types:
+            if "Anytype" not in camp_types:
+                # 将 camp_types 中的值转换为小写，以匹配 ES 中的存储格式
+                lower_camp_types = [camp_type.lower() for camp_type in camp_types]
+                
+                # 添加 terms 查询
+                query["query"]["bool"]["filter"].append({
+                    "terms": {
+                        "campSessionOptions": lower_camp_types
+                    }
+                })
+
+        # Camp Options 筛选
+        if camp_options:
+            # 处理 Indoor 和 Outdoor 选项
+            indoor_selected = "Indoor" in camp_options
+            outdoor_selected = "Outdoor" in camp_options
+
+            if indoor_selected and outdoor_selected:
+                # 如果同时选择了 Indoor 和 Outdoor，只返回 facility 为 Both 的文档
+                query["query"]["bool"]["filter"].append({
+                    "term": {
+                        "facility": "both"
+                    }
+                })
+            elif indoor_selected:
+                # 如果只选择了 Indoor，返回 facility 为 Both 或 Indoor 的文档
+                query["query"]["bool"]["filter"].append({
+                    "terms": {
+                        "facility": ["both", "indoor"]
+                    }
+                })
+            elif outdoor_selected:
+                # 如果只选择了 Outdoor，返回 facility 为 Both 或 Outdoor 的文档
+                query["query"]["bool"]["filter"].append({
+                    "terms": {
+                        "facility": ["both", "outdoor"]
+                    }
+                })
+
+        if camp_options:
+            for option in camp_options:
+                if option == "Lunch":
+                    query["query"]["bool"]["filter"].append({
+                        "term": {
+                            "lunchIncluded": "yes"
+                        }
+                    })
+                elif option == "EarlyDropoff":
+                    query["query"]["bool"]["filter"].append({
+                        "term": {
+                            "earlyDropOff": "yes"
+                        }
+                    })
+                elif option == "Transportation":
+                    query["query"]["bool"]["filter"].append({
+                        "term": {
+                            "transportation": "yes"
+                        }
+                    })
+                elif option == "LatePickup":
+                    query["query"]["bool"]["filter"].append({
+                        "term": {
+                            "LatePickup": "yes"
+                        }
+                    })
+
+    # 筛选 schedule 中的 endDate，排除已过期的课程
+    today = datetime.now().strftime("%Y-%m-%d")  # 获取当前日期
+    query["query"]["bool"]["filter"].append({
+        "nested": {
+            "path": "schedule",  # 嵌套字段路径
+            "query": {
+                "range": {
+                    "schedule.endDate": {
+                        "gte": today  # endDate 必须大于等于今天
+                    }
+                }
+            }
+        }
+    })
+
+    return query
+
+@app.route('/GetOfferingsTextQuery', methods=['GET'])
+def get_offerings_text_query():
+    # 获取请求参数
+    search = request.args.get('search')
+    zip_code = request.args.get('zipCode')
+    radius = request.args.get('radius')
+    is_detail_search = request.args.get('isDetailSearch', 'false').lower() == 'true'
+    age = request.args.get('age', type=int)
+    camp_types = request.args.getlist('campType')
+    camp_options = request.args.getlist('campOptions')
+    # 分页参数
+    page_offset = request.args.get('pageOffset', '0')
+    page_len = request.args.get('pageLen', '15')
+    # 校验必须参数
+    if not search or not zip_code or not radius:
+        return jsonify({"error": "search, zipCode, and radius are required parameters"}), 400
+
+
+    try:
+        # 将邮编转换为经纬度
+        lat, lon = get_lat_lon_from_zip(zip_code)
+    except Exception as e:
+        logger.error(f"Error getting lat/lon from zip code: {str(e)}")
+        return jsonify({f"error": "Invalid zipCode. str{e}"}), 400
+    
+    if not lat or not lon:
+        return jsonify({"error": "Invalid zipCode"}), 400
+
+    # 构建 Elasticsearch 查询
+    query = build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_search, age, camp_types, camp_options)
 
     # 执行查询
-    response = es.search(index=config['ELASTICSEARCH_OFFERING'], body=query)
+    try:
+        response = es.search(index=config['ELASTICSEARCH_OFFERING'], body=query)
+    except Exception as e:
+        return jsonify({"error": f"Invalid search.{str(e)}"}), 400
 
-    # 处理返回结果，
-    data = []
-    for hit in response['hits']['hits']:
-        source = hit['_source']
-        data.append(source)
+    # 处理返回结果
+    data = [hit['_source'] for hit in response['hits']['hits']]
 
-    # 记录日志
-    logger.info(f"GetOfferingsTextQuery - query: {query_text}, conditions: {conditions}, results: {len(data)}")
+    # # 将数据转换为 DataFrame
+    # df = pd.DataFrame(data)
+
+    # # 保存为 CSV 文件
+    # df.to_csv(f"debug.csv", index=False)
 
     return jsonify(data)
-
 
 if __name__ == '__main__':
     print(f"Starting server on {config['HOST']}:{config['PORT']}")
