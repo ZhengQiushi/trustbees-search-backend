@@ -317,7 +317,10 @@ def build_es_query(params):
                                 "businessFullName^1",
                                 "offeringInsightSummary^1"
                             ],
-                            "type": "most_fields"
+                            "type": "most_fields",
+                            "fuzziness": "AUTO",  # 允许单复数变化、拼写误差
+                            "operator": "or",
+                            "minimum_should_match": "50%"  # 增强匹配宽容度
                         }
                     }
                 ],
