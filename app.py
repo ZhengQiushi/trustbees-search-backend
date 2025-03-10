@@ -50,7 +50,7 @@ class SearchParams:
         self.zip_code = request_args.get("zipCode")
         self.radius = request_args.get("radius")
         self.is_detail_search = request_args.get("isDetailSearch", "false").lower()
-        self.age = request_args.get("age")
+        self.ages = request_args.getlist("age")
         self.camp_types = request_args.getlist("campType")
         self.camp_options = request_args.getlist("campOptions")
         self.page_offset = request_args.get("pageOffset", "0")
@@ -75,8 +75,9 @@ class SearchParams:
             raise ValueError(f"Invalid is_detail_search: '{self.is_detail_search}', expected 'true' or 'false'.")
 
         # 5. age（如果有）必须是数字
-        if self.age is not None and not self._is_number(self.age):
-            raise ValueError(f"Invalid age: '{self.age}', expected an integer.")
+        for age in self.ages:
+            if age is not None and not self._is_number(age):
+                raise ValueError(f"Invalid age: '{age}', expected an integer.")
 
         # 6. camp_types 只能包含指定值
         for camp_type in self.camp_types:
@@ -371,15 +372,16 @@ def build_es_query(params):
     # 详细筛选（仅当 is_detail_search 为 true 时）
     if params.is_detail_search:
         # 年龄筛选
-        if params.age:
-            query["query"]["bool"]["filter"].append({
-                "range": {
-                    "ageGroup": {
-                        "gte": params.age,  # ageGroup 的下限小于等于传入的 age
-                        "lte": params.age   # ageGroup 的上限大于等于传入的 age
+        if params.ages:
+            for age in params.ages:
+                query["query"]["bool"]["filter"].append({
+                    "range": {
+                        "ageGroup": {
+                            "gte": age,  # ageGroup 的下限小于等于传入的 age
+                            "lte": age   # ageGroup 的上限大于等于传入的 age
+                        }
                     }
-                }
-            })
+                })
         # Camp Type 筛选
         if params.camp_types:
             if "Anytype" not in params.camp_types:
