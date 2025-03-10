@@ -301,7 +301,7 @@ def get_query():
     return jsonify(response['hits']['hits'])
 
 
-def build_es_query(params):
+def build_es_query(params, has_semantic=False):
     """构建 Elasticsearch 查询"""
     query = {
         "query": {
@@ -372,6 +372,41 @@ def build_es_query(params):
     # 设置 minimum_should_match，确保至少满足一个 should 条件
     query["query"]["bool"]["minimum_should_match"] = 1
 
+    # 语义检索部分
+    if has_semantic:
+        query["query"]["bool"]["should"].extend([
+            {
+                "semantic": {
+                    "field": "activityEmbeddings",
+                    "query": params.search
+                }
+            },
+            {
+                "semantic": {
+                    "field": "activityCategoryEmbeddings",
+                    "query": params.search
+                }
+            },
+            {
+                "semantic": {
+                    "field": "businessFullNameEmbeddings",
+                    "query": params.search
+                }
+            },
+            # {
+            #     "semantic": {
+            #         "field": "offeringInsightSummaryEmbeddings",
+            #         "query": params.search
+            #     }
+            # },
+            # {
+            #     "semantic": {
+            #         "field": "offeringNameEmbeddings",
+            #         "query": params.search
+            #     }
+            # }
+        ])
+    
     # 详细筛选（仅当 is_detail_search 为 true 时）
     if params.is_detail_search:
         # 年龄筛选
@@ -455,6 +490,9 @@ def build_es_query(params):
 
     # 筛选 schedule 中的 endDate，排除已过期的课程
     today = datetime.now().strftime("%Y-%m-%d")  # 获取当前日期
+    if config['ELASTICSEARCH_OFFERING'] == 'offerings_v2':
+        today = "1978-01-01"  # 仅用于测试，将 endDate 限制在 2022 年 1 月 1 日之后
+
     query["query"]["bool"]["filter"].append({
         "nested": {
             "path": "schedule",  # 嵌套字段路径
@@ -515,12 +553,21 @@ def offering_postprocess(response):
         if 'location' in hit['_source']:
             location = hit['_source']['location']
             if 'geo_info' in location:
-                hit['_source']['location'] = {
-                    'lat': location['geo_info']['lat'],
-                    'lon': location['geo_info']['lon'],
-                    'name': location['name'],
-                    'zipcode': location['zipcode'],  # 使用获取到的 zipCode 或空字符串
-                }
+                if location['geo_info'] is None:
+                    # 处理 geo_info 为 None 的情况
+                    hit['_source']['location'] = {
+                        'lat': None,
+                        'lon': None,
+                        'name': location.get('name', ''),
+                        'zipcode': location.get('zipcode', '')  # 使用获取到的 zipCode 或空字符串
+                    }
+                else:
+                    hit['_source']['location'] = {
+                        'lat': location['geo_info'].get('lat',""),
+                        'lon': location['geo_info'].get('lon',""),
+                        'name': location.get('name', ''),
+                        'zipcode': location.get('zipcode', '')  # 使用获取到的 zipCode 或空字符串
+                    }
 
     return response
 
