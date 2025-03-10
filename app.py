@@ -65,9 +65,9 @@ def get_business_full_name():
     hits = response['hits']['hits']
 
     for hit in hits:  # 遍历所有记录
-        if 'interests' in hit['_source']:  # 检查是否存在 interests 字段
-            interests = hit['_source']['interests']
-            hit['_source']['interests'] = utils.transform_interests(interests)  # 转换 interests 字段
+        if 'interest' in hit['_source']:  # 检查是否存在 interests 字段
+            interests = hit['_source']['interest']
+            hit['_source']['interest'] = transform_interests(interests)  # 转换 interests 字段
     return jsonify(hits)
 
 
