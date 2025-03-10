@@ -37,6 +37,63 @@ es = Elasticsearch(
     api_key=config['ELASTICSEARCH_API_KEY']
 )
 
+def business_postprocess(response):
+    """
+    处理 Elasticsearch 查询结果中的字段转换。
+    
+    :param response: Elasticsearch 查询结果
+    :return: 处理后的查询结果
+    """
+    hits = response['hits']['hits']
+
+    for hit in hits:  # 遍历所有记录
+        # 处理 interests 字段
+        if 'interest' in hit['_source']:
+            interests = hit['_source']['interest']
+            hit['_source']['interest'] = transform_interests(interests)
+
+        # 处理 contactPhone 字段
+        if 'contactPhone' in hit['_source']:
+            contact_phone = hit['_source']['contactPhone']
+            hit['_source']['contactPhone'] = transform_contact_phone(contact_phone)
+
+        # 临时处理
+        if 'teyaScore' not in hit['_source']:
+            hit['_source']['teyaScore'] = 0
+        
+        # 处理 mainOfferingAddress.location 字段
+        if 'mainOfferingAddress' in hit['_source']:
+            main_offering_address = hit['_source']['mainOfferingAddress']
+            # 检查并设置 zipCode
+            if 'zipCode' not in main_offering_address:
+                main_offering_address['zipCode'] = ""  # 默认值为空字符串
+
+    return response
+
+def transform_contact_phone(contact_phone):
+    """
+    转换 contactPhone 字段的逻辑。
+    
+    :param contact_phone: 原始的 contactPhone 字段
+    :return: 转换后的 contactPhone 字段（数组形式）
+    """
+    if isinstance(contact_phone, str):  # 如果是字符串，转换为数组
+        return [contact_phone]
+    elif isinstance(contact_phone, list):  # 如果已经是数组，直接返回
+        return contact_phone
+    else:  # 其他情况（如 None 或其他类型），返回空数组
+        return []
+
+def merge_result(response):
+    """
+    将 Elasticsearch 查询结果中的各个 _source 提取出来，合并成一个新的数组。
+    
+    :param response: Elasticsearch 查询结果
+    :return: 包含所有 _source 的数组
+    """
+    hits = response['hits']['hits']
+    return [hit['_source'] for hit in hits]
+
 # 接口1: 精确匹配 businessFullName
 @app.route('/GetBusinessFullName', methods=['GET'])
 def get_business_full_name():
@@ -62,12 +119,11 @@ def get_business_full_name():
     # 执行查询
     response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
     # 处理 interests 字段
-    hits = response['hits']['hits']
 
-    for hit in hits:  # 遍历所有记录
-        if 'interest' in hit['_source']:  # 检查是否存在 interests 字段
-            interests = hit['_source']['interest']
-            hit['_source']['interest'] = transform_interests(interests)  # 转换 interests 字段
+    response = business_postprocess(response)
+
+    hits = merge_result(response)
+
     return jsonify(hits)
 
 
@@ -369,7 +425,7 @@ def get_offerings_text_query():
         return jsonify({"error": f"Invalid search.{str(e)}"}), 400
 
     # 处理返回结果
-    response = postprocess(response)
+    response = offering_postprocess(response)
 
     # data = [hit['_source'] for hit in response['hits']['hits']]
 
@@ -378,10 +434,11 @@ def get_offerings_text_query():
 
     # # 保存为 CSV 文件
     # df.to_csv(f"debug.csv", index=False)
+    hits = merge_result(response)
 
-    return jsonify(response['hits']['hits'])
+    return jsonify(hits)
 
-def postprocess(response):
+def offering_postprocess(response):
     """
     处理 Elasticsearch 查询结果中的字段转换。
     
@@ -395,10 +452,13 @@ def postprocess(response):
         if 'location' in hit['_source']:
             location = hit['_source']['location']
             if 'geo_info' in location:
+                # 检查是否存在 zipCode，如果不存在则设置为空字符串
+                zip_code = location.get('zipCode', "")
                 hit['_source']['location'] = {
                     'lat': location['geo_info']['lat'],
                     'lon': location['geo_info']['lon'],
-                    'name': location['name']
+                    'name': location['name'],
+                    'zipCode': zip_code  # 使用获取到的 zipCode 或空字符串
                 }
 
     return response
