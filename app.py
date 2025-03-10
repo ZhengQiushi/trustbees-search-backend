@@ -369,7 +369,9 @@ def get_offerings_text_query():
         return jsonify({"error": f"Invalid search.{str(e)}"}), 400
 
     # 处理返回结果
-    data = [hit['_source'] for hit in response['hits']['hits']]
+    response = postprocess(response)
+
+    # data = [hit['_source'] for hit in response['hits']['hits']]
 
     # # 将数据转换为 DataFrame
     # df = pd.DataFrame(data)
@@ -377,7 +379,28 @@ def get_offerings_text_query():
     # # 保存为 CSV 文件
     # df.to_csv(f"debug.csv", index=False)
 
-    return jsonify(data)
+    return jsonify(response['hits']['hits'])
+
+def postprocess(response):
+    """
+    处理 Elasticsearch 查询结果中的字段转换。
+    
+    :param response: Elasticsearch 查询结果
+    :return: 处理后的查询结果
+    """
+    hits = response['hits']['hits']
+
+    for hit in hits:  # 遍历所有记录
+        # 处理 location 字段
+        if 'location' in hit['_source']:
+            location = hit['_source']['location']
+            if 'geo_info' in location:
+                hit['_source']['location'] = {
+                    'lat': location['geo_info']['lat'],
+                    'lon': location['geo_info']['lon']
+                }
+
+    return response
 
 if __name__ == '__main__':
     print(f"Starting server on {config['HOST']}:{config['PORT']}")
