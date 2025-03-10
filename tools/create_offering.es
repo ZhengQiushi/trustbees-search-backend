@@ -2,6 +2,15 @@ PUT /offerings_v2
 {
   "mappings": {
     "properties": {
+      "latePickup": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
       "RSVP": {
         "type": "text"
       },
@@ -9,29 +18,33 @@ PUT /offerings_v2
         "type": "date"
       },
       "activity": {
-        "type": "text",  // 改为 text 类型，支持文本搜索
-        "copy_to": "activityEmbeddings"  // 将内容复制到 activity_embeddings 字段
+        "type": "text",
+        "copy_to": [
+          "activityEmbeddings"
+        ]
       },
-      "activityEmbeddings": {
-        "type": "semantic_text",  // 新增字段，用于语义搜索
-        "inference_id": "my-inference-endpoint",
+      "activityCategory": {
+        "type": "text",
+        "copy_to": [
+          "activityCategoryEmbeddings"
+        ]
+      },
+      "activityCategoryEmbeddings": {
+        "type": "semantic_text",
+        "inference_id": "google_ai_studio_completion",
         "model_settings": {
           "task_type": "text_embedding",
-          "dimensions": 1536,
+          "dimensions": 768,
           "similarity": "dot_product",
           "element_type": "float"
         }
       },
-      "activityCategory": {
-        "type": "text",  // 改为 text 类型，支持文本搜索
-        "copy_to": "activityCategoryEmbeddings"  // 将内容复制到 activity_embeddings 字段
-      },
-      "activityCategoryEmbeddings": {
+      "activityEmbeddings": {
         "type": "semantic_text",
-        "inference_id": "my-inference-endpoint",
+        "inference_id": "google_ai_studio_completion",
         "model_settings": {
           "task_type": "text_embedding",
-          "dimensions": 1536,
+          "dimensions": 768,
           "similarity": "dot_product",
           "element_type": "float"
         }
@@ -40,15 +53,19 @@ PUT /offerings_v2
         "type": "integer_range"
       },
       "businessFullName": {
-        "type": "text",  // 改为 text 类型，支持文本搜索
-        "copy_to": "businessFullNameEmbeddings"  // 将内容复制到 activity_embeddings 字段
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
       },
       "businessFullNameEmbeddings": {
         "type": "semantic_text",
-        "inference_id": "my-inference-endpoint",
+        "inference_id": "google_ai_studio_completion",
         "model_settings": {
           "task_type": "text_embedding",
-          "dimensions": 1536,
+          "dimensions": 768,
           "similarity": "dot_product",
           "element_type": "float"
         }
@@ -59,10 +76,7 @@ PUT /offerings_v2
       "campSessionOptions": {
         "type": "keyword"
       },
-      "facility": {
-        "type": "keyword"
-      },
-      "hyperlink": {
+      "earlyDropOff": {
         "type": "text",
         "fields": {
           "keyword": {
@@ -70,6 +84,12 @@ PUT /offerings_v2
             "ignore_above": 256
           }
         }
+      },
+      "facility": {
+        "type": "keyword"
+      },
+      "hyperlink": {
+        "type": "text"
       },
       "location": {
         "properties": {
@@ -90,50 +110,46 @@ PUT /offerings_v2
       "lunchIncluded": {
         "type": "keyword"
       },
-      "name": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
-      },
       "offeringInsightSummary": {
-        "type": "text",  // 改为 text 类型，支持文本搜索
-        "copy_to": "offeringInsightSummaryEmbeddings"  // 将内容复制到 activity_embeddings 字段
+        "type": "text",
+        "copy_to": [
+          "offeringInsightSummaryEmbeddings"
+        ]
       },
       "offeringInsightSummaryEmbeddings": {
         "type": "semantic_text",
-        "inference_id": "my-inference-endpoint",
+        "inference_id": "google_ai_studio_completion",
         "model_settings": {
           "task_type": "text_embedding",
-          "dimensions": 1536,
+          "dimensions": 768,
           "similarity": "dot_product",
           "element_type": "float"
         }
       },
       "offeringName": {
-        "type": "text",  // 改为 text 类型，支持文本搜索
-        "copy_to": "offeringNameEmbeddings"  // 将内容复制到 activity_embeddings 字段
+        "type": "text",
+        "copy_to": [
+          "offeringNameEmbeddings"
+        ]
       },
       "offeringNameEmbeddings": {
         "type": "semantic_text",
-        "inference_id": "my-inference-endpoint"
+        "inference_id": "google_ai_studio_completion",
+        "model_settings": {
+          "task_type": "text_embedding",
+          "dimensions": 768,
+          "similarity": "dot_product",
+          "element_type": "float"
+        }
       },
       "offeringType": {
         "type": "keyword"
       },
       "pricing": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
+        "type": "text"
       },
       "schedule": {
+        "type": "nested",
         "properties": {
           "blackoutDate": {
             "type": "date"
@@ -155,6 +171,15 @@ PUT /offerings_v2
           },
           "time": {
             "type": "keyword"
+          }
+        }
+      },
+      "scheduleSummary": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
           }
         }
       },

@@ -7,6 +7,9 @@ import utils
 import pandas as pd
 from utils.utils import *
 from datetime import datetime  # 导入 datetime 模块
+import re
+from flask import request, jsonify
+
 
 app = Flask(__name__)
 
@@ -37,6 +40,81 @@ es = Elasticsearch(
     api_key=config['ELASTICSEARCH_API_KEY']
 )
 
+
+class SearchParams:
+    VALID_CAMP_TYPES = {"Anytype", "Full Day", "Half Day", "Sleepaway"}
+    VALID_CAMP_OPTIONS = {"Indoor", "Outdoor", "Lunch", "EarlyDropoff", "Transportation", "LatePickup"}
+
+    def __init__(self, request_args):
+        self.search = request_args.get("search")
+        self.zip_code = request_args.get("zipCode")
+        self.radius = request_args.get("radius")
+        self.is_detail_search = request_args.get("isDetailSearch", "false").lower()
+        self.age = request_args.get("age")
+        self.camp_types = request_args.getlist("campType")
+        self.camp_options = request_args.getlist("campOptions")
+        self.page_offset = request_args.get("pageOffset", "0")
+        self.page_len = request_args.get("pageLen", "15")
+        self.lat = None
+        self.lon = None
+
+        # 1. 必填参数校验
+        if not self.search or not self.zip_code or not self.radius:
+            raise ValueError("Invalid parameters: search, zipCode, and radius are required.")
+
+        # 2. zip_code 必须是 5 位数字
+        if not re.fullmatch(r"\d{5}", self.zip_code):
+            raise ValueError(f"Invalid zip_code: '{self.zip_code}', expected a 5-digit string.")
+
+        # 3. radius 必须是数字
+        if not self._is_number(self.radius):
+            raise ValueError(f"Invalid radius: '{self.radius}', expected a number.")
+
+        # 4. is_detail_search 必须是 "true" 或 "false"
+        if self.is_detail_search not in {"true", "false"}:
+            raise ValueError(f"Invalid is_detail_search: '{self.is_detail_search}', expected 'true' or 'false'.")
+
+        # 5. age（如果有）必须是数字
+        if self.age is not None and not self._is_number(self.age):
+            raise ValueError(f"Invalid age: '{self.age}', expected an integer.")
+
+        # 6. camp_types 只能包含指定值
+        for camp_type in self.camp_types:
+            if camp_type not in self.VALID_CAMP_TYPES:
+                raise ValueError(f"Invalid camp_type: '{camp_type}', expected one of {self.VALID_CAMP_TYPES}.")
+
+        # 7. camp_options 只能包含指定值
+        for camp_option in self.camp_options:
+            if camp_option not in self.VALID_CAMP_OPTIONS:
+                raise ValueError(f"Invalid camp_option: '{camp_option}', expected one of {self.VALID_CAMP_OPTIONS}.")
+
+        # 8. page_offset 和 page_len 必须是数字
+        if not self._is_number(self.page_offset):
+            raise ValueError(f"Invalid page_offset: '{self.page_offset}', expected a number.")
+
+        if not self._is_number(self.page_len):
+            raise ValueError(f"Invalid page_len: '{self.page_len}', expected a number.")
+        
+        # 将邮编转换为经纬度
+        try:
+            self.lat, self.lon = get_lat_lon_from_zip(self.zip_code)
+        except Exception as e:
+            raise ValueError(f"Invalid zipcode: '{self.zip_code}', failed to parse to lat and lon. {str(e)}")
+        
+        if not self.lat or not self.lon:
+            raise ValueError(f"Invalid zipcode: '{self.zip_code}', failed to parse to lat and lon.")
+
+
+    @staticmethod
+    def _is_number(value):
+        """检查值是否为数字"""
+        try:
+            float(value)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+
 def business_postprocess(response):
     """
     处理 Elasticsearch 查询结果中的字段转换。
@@ -65,8 +143,8 @@ def business_postprocess(response):
         if 'mainOfferingAddress' in hit['_source']:
             main_offering_address = hit['_source']['mainOfferingAddress']
             # 检查并设置 zipCode
-            if 'zipCode' not in main_offering_address:
-                main_offering_address['zipCode'] = ""  # 默认值为空字符串
+            if 'zipcode' not in main_offering_address:
+                main_offering_address['zipcode'] = ""  # 默认值为空字符串
 
     return response
 
@@ -222,7 +300,7 @@ def get_query():
     return jsonify(response['hits']['hits'])
 
 
-def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_search, age, camp_types, camp_options):
+def build_es_query(params):
     """构建 Elasticsearch 查询"""
     query = {
         "query": {
@@ -230,7 +308,7 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
                 "must": [
                     {
                         "multi_match": {
-                            "query": search,
+                            "query": params.search,
                             "fields": [
                                 "activity^5",
                                 "activityCategory^5",
@@ -246,8 +324,8 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
                 "should": []  # 用于处理 online 课程
             },
         },
-        "from": page_offset,  # 分页偏移量
-        "size": page_len,      # 每页长度
+        "from": params.page_offset,  # 分页偏移量
+        "size": params.page_len,      # 每页长度
         "_source": {
             "excludes": ["*Embeddings"]  # 排除 Embeddings 字段
         },
@@ -258,16 +336,16 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
     }
 
     # 距离筛选（仅适用于 locationType 为 in_person）
-    if lat and lon and radius:
+    if params.lat and params.lon and params.radius:
         query["query"]["bool"]["should"].append({
             "bool": {
                 "must": [
                     {
                         "geo_distance": {
-                            "distance": f"{radius}miles",
+                            "distance": f"{params.radius}miles",
                             "location.geo_info": {
-                                "lat": lat,
-                                "lon": lon
+                                "lat": params.lat,
+                                "lon": params.lon
                             }
                         }
                     },
@@ -291,22 +369,22 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
     query["query"]["bool"]["minimum_should_match"] = 1
 
     # 详细筛选（仅当 is_detail_search 为 true 时）
-    if is_detail_search:
+    if params.is_detail_search:
         # 年龄筛选
-        if age:
+        if params.age:
             query["query"]["bool"]["filter"].append({
                 "range": {
                     "ageGroup": {
-                        "gte": age,  # ageGroup 的下限小于等于传入的 age
-                        "lte": age   # ageGroup 的上限大于等于传入的 age
+                        "gte": params.age,  # ageGroup 的下限小于等于传入的 age
+                        "lte": params.age   # ageGroup 的上限大于等于传入的 age
                     }
                 }
             })
         # Camp Type 筛选
-        if camp_types:
-            if "Anytype" not in camp_types:
+        if params.camp_types:
+            if "Anytype" not in params.camp_types:
                 # 将 camp_types 中的值转换为小写，以匹配 ES 中的存储格式
-                lower_camp_types = [camp_type.lower() for camp_type in camp_types]
+                lower_camp_types = [camp_type.lower() for camp_type in params.camp_types]
                 
                 # 添加 terms 查询
                 query["query"]["bool"]["filter"].append({
@@ -316,10 +394,10 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
                 })
 
         # Camp Options 筛选
-        if camp_options:
+        if params.camp_options:
             # 处理 Indoor 和 Outdoor 选项
-            indoor_selected = "Indoor" in camp_options
-            outdoor_selected = "Outdoor" in camp_options
+            indoor_selected = "Indoor" in params.camp_options
+            outdoor_selected = "Outdoor" in params.camp_options
 
             if indoor_selected and outdoor_selected:
                 # 如果同时选择了 Indoor 和 Outdoor，只返回 facility 为 Both 的文档
@@ -343,8 +421,8 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
                     }
                 })
 
-        if camp_options:
-            for option in camp_options:
+        if params.camp_options:
+            for option in params.camp_options:
                 if option == "Lunch":
                     query["query"]["bool"]["filter"].append({
                         "term": {
@@ -366,7 +444,7 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
                 elif option == "LatePickup":
                     query["query"]["bool"]["filter"].append({
                         "term": {
-                            "LatePickup": "yes"
+                            "latePickup": "yes"
                         }
                     })
 
@@ -389,34 +467,14 @@ def build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_se
 
 @app.route('/GetOfferingsTextQuery', methods=['GET'])
 def get_offerings_text_query():
-    # 获取请求参数
-    search = request.args.get('search')
-    zip_code = request.args.get('zipCode')
-    radius = request.args.get('radius')
-    is_detail_search = request.args.get('isDetailSearch', 'false').lower() == 'true'
-    age = request.args.get('age', type=int)
-    camp_types = request.args.getlist('campType')
-    camp_options = request.args.getlist('campOptions')
-    # 分页参数
-    page_offset = request.args.get('pageOffset', '0')
-    page_len = request.args.get('pageLen', '15')
-    # 校验必须参数
-    if not search or not zip_code or not radius:
-        return jsonify({"error": "search, zipCode, and radius are required parameters"}), 400
-
-
+    params = None
     try:
-        # 将邮编转换为经纬度
-        lat, lon = get_lat_lon_from_zip(zip_code)
-    except Exception as e:
-        logger.error(f"Error getting lat/lon from zip code: {str(e)}")
-        return jsonify({f"error": "Invalid zipCode. str{e}"}), 400
-    
-    if not lat or not lon:
-        return jsonify({"error": "Invalid zipCode"}), 400
+        params = SearchParams(request.args)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
     # 构建 Elasticsearch 查询
-    query = build_es_query(search, lat, lon, radius, page_offset, page_len, is_detail_search, age, camp_types, camp_options)
+    query = build_es_query(params)
 
     # 执行查询
     try:
@@ -452,13 +510,11 @@ def offering_postprocess(response):
         if 'location' in hit['_source']:
             location = hit['_source']['location']
             if 'geo_info' in location:
-                # 检查是否存在 zipCode，如果不存在则设置为空字符串
-                zip_code = location.get('zipCode', "")
                 hit['_source']['location'] = {
                     'lat': location['geo_info']['lat'],
                     'lon': location['geo_info']['lon'],
                     'name': location['name'],
-                    'zipCode': zip_code  # 使用获取到的 zipCode 或空字符串
+                    'zipcode': location['zipcode'],  # 使用获取到的 zipCode 或空字符串
                 }
 
     return response
