@@ -1,0 +1,8 @@
+elasticsearch==8.17.2
+Flask==3.1.0
+geopy==2.4.1
+numpy==1.23.0
+pandas==1.4.3
+protobuf==6.30.0
+python-dotenv==1.0.1
+pyzipcode==3.0.1
