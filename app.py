@@ -397,7 +397,8 @@ def postprocess(response):
             if 'geo_info' in location:
                 hit['_source']['location'] = {
                     'lat': location['geo_info']['lat'],
-                    'lon': location['geo_info']['lon']
+                    'lon': location['geo_info']['lon'],
+                    'name': location['name']
                 }
 
     return response
