@@ -6,7 +6,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import config
 
-name = "offering_dev"
+name = "test"
 
 # 初始化 Elasticsearch 客户端
 client = Elasticsearch(
@@ -29,7 +29,7 @@ response = client.search(
             "match_all": {}
         },
         "_source": {
-            "excludes": ["*Embeddings"]
+            "excludes": ["*Embeddings", "pages"]
         },
         "size": 1000  # 你可以根据需要调整这个大小
     }

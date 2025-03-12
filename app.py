@@ -49,7 +49,6 @@ class SearchParams:
         self.search = request_args.get("search")
         self.zip_code = request_args.get("zipCode")
         self.radius = request_args.get("radius")
-        self.is_detail_search = request_args.get("isDetailSearch", "false").lower()
         self.ages = request_args.getlist("age")
         self.camp_types = request_args.getlist("campType")
         self.camp_options = request_args.getlist("campOptions")
@@ -59,8 +58,8 @@ class SearchParams:
         self.lon = None
 
         # 1. 必填参数校验
-        if not self.search or not self.zip_code or not self.radius:
-            raise ValueError("Invalid parameters: search, zipCode, and radius are required.")
+        if not self.zip_code or not self.radius:
+            raise ValueError("Invalid parameters: zipCode, and radius are required.")
 
         # 2. zip_code 必须是 5 位数字
         if not re.fullmatch(r"\d{5}", self.zip_code):
@@ -69,10 +68,6 @@ class SearchParams:
         # 3. radius 必须是数字
         if not self._is_number(self.radius):
             raise ValueError(f"Invalid radius: '{self.radius}', expected a number.")
-
-        # 4. is_detail_search 必须是 "true" 或 "false"
-        if self.is_detail_search not in {"true", "false"}:
-            raise ValueError(f"Invalid is_detail_search: '{self.is_detail_search}', expected 'true' or 'false'.")
 
         # 5. age（如果有）必须是数字
         for age in self.ages:
@@ -306,24 +301,7 @@ def build_es_query(params, has_semantic=False):
     query = {
         "query": {
             "bool": {
-                "must": [
-                    {
-                        "multi_match": {
-                            "query": params.search,
-                            "fields": [
-                                "activity^5",
-                                "activityCategory^5",
-                                "offeringName^3",
-                                "businessFullName^1",
-                                "offeringInsightSummary^1"
-                            ],
-                            "type": "most_fields",
-                            "fuzziness": "AUTO",  # 允许单复数变化、拼写误差
-                            "operator": "or",
-                            "minimum_should_match": "50%"  # 增强匹配宽容度
-                        }
-                    }
-                ],
+                "must": [],  # 初始化为空，根据 search 参数决定是否添加 multi_match
                 "filter": [],
                 "should": []  # 用于处理 online 课程
             },
@@ -333,11 +311,31 @@ def build_es_query(params, has_semantic=False):
         "_source": {
             "excludes": ["*Embeddings"]  # 排除 Embeddings 字段
         },
-        # 新增：按商家 ID 去重
-        # "collapse": {
-        #     "field": "businessFullName.keyword"  # 假设商家 ID 存储在 businessFullName 字段中
-        # }
     }
+
+    # 如果 search 参数不为空，添加 multi_match 查询
+    if params.search:
+        query["query"]["bool"]["must"].append({
+            "multi_match": {
+                "query": params.search,
+                "fields": [
+                    "activity^5",
+                    "activityCategory^5",
+                    "offeringName^3",
+                    "businessFullName^1",
+                    "offeringInsightSummary^1"
+                ],
+                "type": "most_fields",
+                "fuzziness": "AUTO",  # 允许单复数变化、拼写误差
+                "operator": "or",
+                "minimum_should_match": "50%"  # 增强匹配宽容度
+            }
+        })
+    else:
+        # 如果 search 参数为空，添加 match_all 查询
+        query["query"]["bool"]["must"].append({
+            "match_all": {}
+        })
 
     # 距离筛选（仅适用于 locationType 为 in_person）
     if params.lat and params.lon and params.radius:
@@ -407,8 +405,7 @@ def build_es_query(params, has_semantic=False):
             # }
         ])
     
-    # 详细筛选（仅当 is_detail_search 为 true 时）
-    if params.is_detail_search:
+    if True:
         # 年龄筛选
         if params.ages:
             for age in params.ages:
