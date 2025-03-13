@@ -383,18 +383,6 @@ def build_es_query(params, has_semantic=False):
         query["query"]["bool"]["should"].extend([
             {
                 "semantic": {
-                    "field": "activityEmbeddings",
-                    "query": params.search
-                }
-            },
-            {
-                "semantic": {
-                    "field": "activityCategoryEmbeddings",
-                    "query": params.search
-                }
-            },
-            {
-                "semantic": {
                     "field": "businessFullNameEmbeddings",
                     "query": params.search
                 }
@@ -405,12 +393,12 @@ def build_es_query(params, has_semantic=False):
             #         "query": params.search
             #     }
             # },
-            # {
-            #     "semantic": {
-            #         "field": "offeringNameEmbeddings",
-            #         "query": params.search
-            #     }
-            # }
+            {
+                "semantic": {
+                    "field": "offeringNameEmbeddings",
+                    "query": params.search
+                }
+            }
         ])
     
     if True:
