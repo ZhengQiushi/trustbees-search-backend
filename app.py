@@ -311,6 +311,9 @@ def build_es_query(params, has_semantic=False):
         "_source": {
             "excludes": ["*Embeddings"]  # 排除 Embeddings 字段
         },
+        "collapse": {
+            "field": "businessID"
+        }
     }
 
     # 如果 search 参数不为空，添加 multi_match 查询
