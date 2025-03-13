@@ -181,12 +181,17 @@ def get_business_full_name():
     # 构建 Elasticsearch 查询
     query = {
         "query": {
-            "term": {
-                "businessFullName.keyword": business_full_name
+            "multi_match": {
+                "query": business_full_name,
+                "fields": ["businessFullName"],  # 可以指定多个字段
+                "type": "most_fields",  # 使用 most_fields 类型
+                "fuzziness": "AUTO",  # 允许单复数变化、拼写误差
+                "operator": "or",
+                "minimum_should_match": "50%"  # 增强匹配宽容度
             }
         },
         "_source": {
-            "excludes": ["pages"]  # 排除 pages 字段
+            "excludes": ["pages", "*Embeddings"]  # 排除 pages 字段
         }
     }
 
