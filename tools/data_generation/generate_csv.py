@@ -68,7 +68,7 @@ def generate_test_data(thread_id, num_records):
             5. ageGroup: JSON, e.g., '{"gte": 0, "lte": 100}'
             6. businessFullName: String, e.g., 'AllStar Martial Arts'
             7. campAmenities: String, e.g., ''
-            8. campSessionOptions: String, e.g., 'Any type', 'Half day camp', 'Sleepaway camp', 'Full day camp'
+            8. campSessionOptions: String, e.g., 'AnyType', 'HalfDayCamp', 'SleepawayCamp', 'FullDay Camp'
             9. facility: String, e.g., 'indoor' / 'outdoor' / 'both'
             10. hyperlink: List, e.g., ['Sign up today: https://example.com']
             11. location: JSON, e.g., '{"name": "1166 West Chestnut St, Union, NJ, 07083, USA", "geo_info": {"lon": -74.2862706, "lat": 40.6924411}}'
@@ -135,7 +135,7 @@ def generate_test_data(thread_id, num_records):
                     "ageGroup": '{"gte": 8, "lte": 14}',
                     "businessFullName": "Code Ninjas",
                     "campAmenities": "Computers, Snacks",
-                    "campSessionOptions": "Half day camp",
+                    "campSessionOptions": "HalfDayCamp",
                     "facility": "indoor",
                     "hyperlink": ["Sign up today: https://codeninjas.com/summer-camp"],
                     "location": '{"name": "123 Main St, Springfield, IL, 62701, USA", "geo_info": {"lon": -89.650148, "lat": 39.781721}}',

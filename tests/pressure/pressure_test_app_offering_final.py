@@ -101,7 +101,7 @@ ZIP_CODES = [
 ]
 
 # 营地类型
-CAMP_TYPES = ["Anytype", "Full Day", "Half Day", "Sleepaway"]
+CAMP_TYPES = ["AnyType", "FullDayCamp", "HalfDayCamp", "SleepawayCamp"]
 
 # 营地选项
 CAMP_OPTIONS = ["Indoor", "Outdoor", "Lunch", "EarlyDropoff", "Transportation", "LatePickup"]
