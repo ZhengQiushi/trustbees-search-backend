@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from elasticsearch import Elasticsearch
 import logging
 import argparse
-from dotenv import dotenv_values
 import utils
 import pandas as pd
 from utils.utils import *
@@ -13,33 +12,47 @@ from flask import request, jsonify
 
 app = Flask(__name__)
 
+import global_vars
+
 # 解析命令行参数
 parser = argparse.ArgumentParser(description='Run the server.')
 parser.add_argument('--config', type=str, default='config.env', help='Path to the configuration file')
 args = parser.parse_args()
 
-# 加载配置文件
-config = dotenv_values(args.config)
-
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(config['LOG_FILE']),  # 日志写入文件
-        # logging.StreamHandler()  # 日志输出到控制台
-    ]
-)
+global_vars.init_globals(args.config)
 logger = logging.getLogger(__name__)
 
+logging.getLogger("requests").setLevel(global_vars.config.get("OTHERS_LOGGER_LEVEL"))
+logging.getLogger("scrapy").setLevel(global_vars.config.get("OTHERS_LOGGER_LEVEL"))
+logging.getLogger("urllib3").setLevel(global_vars.config.get("OTHERS_LOGGER_LEVEL"))
 
+# 关闭 elastic_transport 的日志
+logging.getLogger('elastic_transport').setLevel(global_vars.config.get("OTHERS_LOGGER_LEVEL"))
+
+# 如果你使用的是旧版本的 elasticsearch 客户端（<8.0），可能需要关闭 elasticsearch 的日志
+logging.getLogger('elasticsearch').setLevel(global_vars.config.get("OTHERS_LOGGER_LEVEL"))
 
 # 连接到 Elasticsearch
-es = Elasticsearch(
-    config['ELASTICSEARCH_URL'],
-    api_key=config['ELASTICSEARCH_API_KEY']
-)
+es = None
 
+es_config = {
+    "hosts": [global_vars.config.get("ES_HOST")],
+    "api_key": global_vars.config.get("ES_API_KEY"),
+    # 其他可选配置
+    "max_retries": 3,
+    "retry_on_timeout": True
+}
+
+try:
+    es = Elasticsearch(**es_config)
+    # 测试连接
+    if not es.ping():
+        raise ValueError("无法连接到 Elasticsearch")
+    print("成功连接到 Elasticsearch")
+except Exception as e:
+    print(f"Elasticsearch 连接错误: {e}")
+except ValueError as e:
+    print(e)
 
 class SearchParams:
     VALID_CAMP_TYPES = {"AnyType", "FullDayCamp", "HalfDayCamp", "SleepawayCamp"}
@@ -171,162 +184,82 @@ def merge_result(response):
 # 接口1: 精确匹配 businessFullName
 @app.route('/GetBusinessFullName', methods=['GET'])
 def get_business_full_name():
-    business_full_name = request.args.get('businessFullName')
-    if not business_full_name:
-        return jsonify({"error": "businessFullName parameter is required"}), 400
-
     # 记录日志
-    # logger.info(f"GetBusinessFullName - businessFullName: {business_full_name}")
+    logger.info(f"{request}")
+    try:
+        business_full_name = request.args.get('businessFullName')
+        if not business_full_name:
+            raise Exception(f"Failed to parse params, businessFullName parameter is required")
 
-    # 构建 Elasticsearch 查询
-    query = {
-        "query": {
-            "multi_match": {
-                "query": business_full_name,
-                "fields": ["businessFullName"],  # 可以指定多个字段
-                "type": "most_fields",  # 使用 most_fields 类型
-                "fuzziness": "AUTO",  # 允许单复数变化、拼写误差
-                "operator": "or",
-                "minimum_should_match": "50%"  # 增强匹配宽容度
+        # 构建 Elasticsearch 查询
+        query = {
+            "query": {
+                "multi_match": {
+                    "query": business_full_name,
+                    "fields": ["businessFullName"],  # 可以指定多个字段
+                    "type": "most_fields",  # 使用 most_fields 类型
+                    "fuzziness": "AUTO",  # 允许单复数变化、拼写误差
+                    "operator": "or",
+                    "minimum_should_match": "50%"  # 增强匹配宽容度
+                }
+            },
+            "_source": {
+                "excludes": ["pages", "*Embeddings"]  # 排除 pages 字段
             }
-        },
-        "_source": {
-            "excludes": ["pages", "*Embeddings"]  # 排除 pages 字段
         }
-    }
+        try:
+            # 执行查询
+            response = es.search(index=global_vars.config['ELASTICSEARCH_PROVIDER'], body=query)
+        except Exception as e:
+            raise Exception(f"Failed to search ES, {str(e)}")
+          
+        # 处理 interests 字段
+        response = business_postprocess(response)
 
-    # 执行查询
-    response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
-    # 处理 interests 字段
+        # 合并多节点查询
+        hits = merge_result(response)
 
-    response = business_postprocess(response)
-
-    hits = merge_result(response)
-
-    return jsonify(hits)
-
+        return jsonify(hits)
+    except Exception as e:
+        logger.error(f"Invalid request, request={request}, info={str(e)}")
+        return jsonify({"error": f"Invalid request, request={request}, info={str(e)}"}), 400
 
 @app.route('/GetBusinessID', methods=['GET'])
 def get_business_id():
-    business_id = request.args.get('businessID')
-    if not business_id:
-        return jsonify({"error": "businessID parameter is required"}), 400
+    logger.info(f"{request}")
+    
+    try:
+        business_id = request.args.get('businessID')
+        if not business_id:
+            raise Exception(f"Failed to parse params, businessID parameter is required")
 
-    # 构建 Elasticsearch 查询
-    query = {
-        "query": {
-            "term": {
-                "businessID": business_id
+        # 构建 Elasticsearch 查询
+        query = {
+            "query": {
+                "term": {
+                    "businessID": business_id
+                }
+            },
+            "_source": {
+                "excludes": ["pages", "*Embeddings"]
             }
-        },
-        "_source": {
-            "excludes": ["pages", "*Embeddings"]
         }
-    }
-
-    # 执行查询
-    response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
-    # 处理 interests 字段
-
-    response = business_postprocess(response)
-
-    hits = merge_result(response)
-
-    return jsonify(hits)
-
-# 接口2: 模糊匹配，支持筛选条件
-@app.route('/GetQuery', methods=['GET'])
-def get_query():
-    query_text = request.args.get('query')
-    conditions = request.args.get('conditions')  # 获取筛选条件
-    if not query_text:
-        return jsonify({"error": "query parameter is required"}), 400
-
-    # 记录日志
-    # logger.info(f"GetQuery - query: {query_text}, conditions: {conditions}")
-
-    # 解析筛选条件
-    filter_conditions = []
-    page_offset = 0  # 默认偏移量
-    page_len = 15    # 默认每页长度
-
-    if conditions:
-        try:
-            conditions = eval(conditions)  # 将字符串转换为字典
-            if not isinstance(conditions, dict):
-                return jsonify({"error": "conditions must be a JSON object"}), 400
-
-            # 处理分页参数
-            if "page_offset" in conditions:
-                page_offset = int(conditions["page_offset"])
-            if "page_len" in conditions:
-                page_len = int(conditions["page_len"])
-
-            # 处理地点经纬度 + 距离筛选
-            if "location" in conditions and "distance" in conditions:
-                lat, lon = conditions["location"].get("lat"), conditions["location"].get("lon")
-                distance = conditions["distance"]
-                if lat and lon and distance:
-                    filter_conditions.append({
-                        "geo_distance": {
-                            "distance": distance,
-                            "mainOfferingAddress.location": {
-                                "lat": lat,
-                                "lon": lon
-                            }
-                        }
-                    })
-
-            # 处理评价等级筛选
-            if "min_rating" in conditions:
-                min_rating = float(conditions["min_rating"])
-                filter_conditions.append({
-                    "range": {
-                        "googleReviewRating": {
-                            "gte": min_rating
-                        }
-                    }
-                })
-
+        try: 
+            # 执行查询
+            response = es.search(index=global_vars.config['ELASTICSEARCH_PROVIDER'], body=query)
         except Exception as e:
-            return jsonify({"error": f"Invalid conditions format: {str(e)}"}), 400
-
-    # 构建 Elasticsearch 查询
-    query = {
-        "query": {
-            "bool": {
-                "must": [
-                    {
-                        "multi_match": {
-                            "query": query_text,
-                            "fields": [
-                                "businessFullName",
-                                "contactPhone",
-                                "franchise",
-                                "googleReview",
-                                "interest",
-                                "locationType",
-                                "mainOfferingAddress.name",
-                                # "pages.content",
-                                # "pages.title",
-                                "website"
-                            ]
-                        }
-                    }
-                ],
-                "filter": filter_conditions,  # 添加筛选条件
-            }
-        },
-        "from": page_offset,  # 分页偏移量
-        "size": page_len,      # 每页长度
-        "_source": {
-            "excludes": ["pages"]  # 排除 pages 字段
-        }
-    }
-    # 执行查询
-    response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
-    return jsonify(response['hits']['hits'])
-
+            raise Exception(f"Failed to search ES, {str(e)}")
+        
+        # 处理 interests 字段
+        response = business_postprocess(response)
+        
+        # 合并多节点查询
+        hits = merge_result(response)
+        
+        return jsonify(hits)
+    except Exception as e:
+        logger.error(f"Invalid request, request={request}, info={str(e)}")
+        return jsonify({"error": f"Invalid request, request={request}, info={str(e)}"}), 400
 
 def build_es_query(params, has_semantic=False):
     """构建 Elasticsearch 查询"""
@@ -517,7 +450,7 @@ def build_es_query(params, has_semantic=False):
 
     # 筛选 schedule 中的 endDate，排除已过期的课程
     today = datetime.now().strftime("%Y-%m-%d")  # 获取当前日期
-    if config['ELASTICSEARCH_OFFERING'] == 'offerings_v2':
+    if global_vars.config['ELASTICSEARCH_OFFERING'] == 'offerings_v2':
         today = "1978-01-01"  # 仅用于测试，将 endDate 限制在 2022 年 1 月 1 日之后
 
     query["query"]["bool"]["filter"].append({
@@ -537,34 +470,40 @@ def build_es_query(params, has_semantic=False):
 
 @app.route('/GetOfferingsTextQuery', methods=['GET'])
 def get_offerings_text_query():
+    logger.info(f"{request}")
     params = None
     try:
-        params = SearchParams(request.args)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+        try:
+            params = SearchParams(request.args)
+        except Exception as e:
+            raise Exception(f"Failed to parse params, {str(e)}")
 
-    # 构建 Elasticsearch 查询
-    query = build_es_query(params)
+        # 构建 Elasticsearch 查询
+        query = build_es_query(params)
 
-    # 执行查询
-    try:
-        response = es.search(index=config['ELASTICSEARCH_OFFERING'], body=query)
+        # 执行查询
+        try:
+            response = es.search(index=global_vars.config['ELASTICSEARCH_OFFERING'], body=query)
+        except Exception as e:
+            raise Exception(f"Failed to search ES, {str(e)}")
+        # 处理返回结果
+        response = offering_postprocess(response)
+
+        if global_vars.config.get("ES_LOGGER_LEVEL") == "DEBUG":
+            data = [hit['_source'] for hit in response['hits']['hits']]
+            # 将数据转换为 DataFrame
+            df = pd.DataFrame(data)
+            # 保存为 CSV 文件
+            df.to_csv(f"debug.csv", index=False)
+        
+        # 合并多节点查询
+        hits = merge_result(response)
+        
+        return jsonify(hits)
     except Exception as e:
-        return jsonify({"error": f"Invalid search.{str(e)}"}), 400
-
-    # 处理返回结果
-    response = offering_postprocess(response)
-
-    # data = [hit['_source'] for hit in response['hits']['hits']]
-
-    # # 将数据转换为 DataFrame
-    # df = pd.DataFrame(data)
-
-    # # 保存为 CSV 文件
-    # df.to_csv(f"debug.csv", index=False)
-    hits = merge_result(response)
-
-    return jsonify(hits)
+        logger.error(f"Invalid request, request={request}, info={str(e)}")
+        return jsonify({"error": f"Invalid request, request={request}, info={str(e)}"}), 400
+    
 
 def offering_postprocess(response):
     """
@@ -599,5 +538,5 @@ def offering_postprocess(response):
     return response
 
 if __name__ == '__main__':
-    print(f"Starting server on {config['HOST']}:{config['PORT']}")
-    app.run(debug=True, port=config['PORT'], host=config['HOST'])
+    # logger.warning(f"Starting server on {global_vars.config['HOST']}:{global_vars.config['PORT']}")
+    app.run(debug=True, port=global_vars.config['PORT'], host=global_vars.config['HOST'])
