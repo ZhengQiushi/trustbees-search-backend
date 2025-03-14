@@ -206,6 +206,33 @@ def get_business_full_name():
     return jsonify(hits)
 
 
+@app.route('/GetBusinessID', methods=['GET'])
+def get_business_id():
+    business_id = request.args.get('businessID')
+    if not business_id:
+        return jsonify({"error": "businessID parameter is required"}), 400
+
+    # 构建 Elasticsearch 查询
+    query = {
+        "query": {
+            "term": {
+                "businessID": business_id
+            }
+        },
+        "_source": {
+            "excludes": ["pages", "*Embeddings"]
+        }
+    }
+
+    # 执行查询
+    response = es.search(index=config['ELASTICSEARCH_PROVIDER'], body=query)
+    # 处理 interests 字段
+
+    response = business_postprocess(response)
+
+    hits = merge_result(response)
+
+    return jsonify(hits)
 
 # 接口2: 模糊匹配，支持筛选条件
 @app.route('/GetQuery', methods=['GET'])
