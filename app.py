@@ -376,20 +376,12 @@ def build_es_query(params, has_semantic=False):
         # Camp Type 筛选
         if params.camp_types:
             if "AnyType" not in params.camp_types:
-                # 将 camp_types 中的值转换为小写，以匹配 ES 中的存储格式
-                must_queries = []
-                for camp_type in params.camp_types:
-                    if camp_type == "FullDayCamp":
-                        must_queries.append({"wildcard": {"campSessionOptions": "*full day*"}})
-                    elif camp_type == "HalfDayCamp":
-                        must_queries.append({"wildcard": {"campSessionOptions": "*half day*"}})
-                    elif camp_type == "SleepawayCamp":
-                        must_queries.append({"wildcard": {"campSessionOptions": "*sleepaway*"}})
-                
                 # 添加 bool 查询，使用 must 确保同时满足所有条件
                 query["query"]["bool"]["filter"].append({
                     "bool": {
-                        "must": must_queries
+                        "must": [
+                            {"term": {"campSessionOptions": camp_type}} for camp_type in params.camp_types
+                        ]
                     }
                 })
 
