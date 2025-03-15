@@ -9,6 +9,7 @@ from dotenv import dotenv_values
 config = None
 producer = None
 eslogger = None
+es = None
 
 # 自定义 Elasticsearch 处理程序
 class ElasticsearchHandler(logging.Handler):
@@ -34,7 +35,7 @@ def init_globals(config_file):
     """
     初始化全局变量：加载配置、设置日志、创建 Kafka Producer 实例
     """
-    global eslogger, config
+    global eslogger, config, es
     
     config = dotenv_values(config_file)
 
@@ -78,3 +79,33 @@ def init_globals(config_file):
             es_handler  # 添加 Elasticsearch 处理器
         ]
     )
+
+    logging.getLogger("requests").setLevel(config.get("OTHERS_LOGGER_LEVEL"))
+    logging.getLogger("scrapy").setLevel(config.get("OTHERS_LOGGER_LEVEL"))
+    logging.getLogger("urllib3").setLevel(config.get("OTHERS_LOGGER_LEVEL"))
+
+    # 关闭 elastic_transport 的日志
+    logging.getLogger('elastic_transport').setLevel(config.get("OTHERS_LOGGER_LEVEL"))
+
+    # 如果你使用的是旧版本的 elasticsearch 客户端（<8.0），可能需要关闭 elasticsearch 的日志
+    logging.getLogger('elasticsearch').setLevel(config.get("OTHERS_LOGGER_LEVEL"))
+
+    # 连接到 Elasticsearch
+    es_config = {
+        "hosts": [config.get("ES_HOST")],
+        "api_key": config.get("ES_API_KEY"),
+        # 其他可选配置
+        "max_retries": 3,
+        "retry_on_timeout": True
+    }
+
+    try:
+        es = Elasticsearch(**es_config)
+        # 测试连接
+        if not es.ping():
+            raise ValueError("无法连接到 Elasticsearch")
+        print("成功连接到 Elasticsearch")
+    except Exception as e:
+        print(f"Elasticsearch 连接错误: {e}")
+    except ValueError as e:
+        print(e)
