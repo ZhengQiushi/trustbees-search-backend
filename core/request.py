@@ -167,9 +167,9 @@ class RequestOfferingSearch(AbstractRequest):
                         "offeringInsightSummary^1"
                     ],
                     "type": "most_fields",
-                    "fuzziness": "AUTO",
+                    "fuzziness": "1",
                     "operator": "or",
-                    "minimum_should_match": "50%"
+                    # "minimum_should_match": "50%"
                 }
             })
         else:
@@ -276,17 +276,13 @@ class RequestOfferingSearch(AbstractRequest):
                         }
                     })
 
-        today = datetime.now().strftime("%Y-%m-%d")
-        if global_vars.config['ELASTICSEARCH_OFFERING'] == 'offerings_v2':
-            today = "1978-01-01"
-
         query["query"]["bool"]["filter"].append({
             "nested": {
                 "path": "schedule",
                 "query": {
                     "range": {
                         "schedule.endDate": {
-                            "gte": today
+                            "gte": datetime.now().strftime("%Y-%m-%d")
                         }
                     }
                 }

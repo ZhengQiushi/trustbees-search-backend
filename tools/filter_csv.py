@@ -6,16 +6,15 @@ import sys, os
 # 将项目根目录添加到 sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from utils import *
+from utils.utils import *
 
 # 定义给定的经纬度
-my_lat = 40.695401  # 示例：纽约市的纬度
-my_lon = -74.26933  # 示例：纽约市的经度
-
+zip_code = '07072'
+my_lat, my_lon = get_lat_lon_from_zip(zip_code)
 	
-path = "/Users/lion/Project/trustbees-search-backend/"
+path = "/Users/lion/Project/trustbees-search-backend/tests/functional/"
 # 读取 CSV 文件
-df = pd.read_csv(path + "offering_dev.csv")
+df = pd.read_csv(path + "offering_test.csv")
 
 # 解析 mainOfferingAddress 列，提取 lat 和 lon
 def parse_location(address):

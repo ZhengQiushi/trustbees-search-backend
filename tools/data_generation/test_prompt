@@ -1,0 +1,263 @@
+
+
+请你基于附件2的csv数据集，现在需要你对GetOfferingsTextQuery接口进行测试，写一个python的测试文件。
+
+测试要求如下：
+1. 检查非法传参
+        self.search = request_args.get("search") 可传，为字符串，涉及关键词匹配的字段activity	activityCategory businessFullName locationDisplayName offeringInsightSummary	offeringName
+        self.zip_code = request_args.get("zipCode") 必传，必须为五位数字
+        self.radius = request_args.get("radius") 必传，必须为数字
+        self.ages = request_args.getlist("age") 可传，必须为数字
+        self.camp_types = request_args.getlist("campType") 可传，必须为指定字符串 CAMP_TYPES = ["AnyType", "FullDayCamp", "HalfDayCamp", "SleepawayCamp"] 对应csv字段campSessionOptions
+        self.camp_options = request_args.getlist("campOptions") 可传，必须为指定字符串 CAMP_OPTIONS = ["Indoor", "Outdoor", "Lunch", "EarlyDropoff", "Transportation", "LatePickup"] 。Indoor、Outdoor 对应字段facility，Lunch对应字段lunchIncluded，EarlyDropoff对应earlyDropOff Transportation对应transportation LatePickup对应latePickup
+
+2. 给定zipcode和radius 检查距离筛选正确性（注意，如果locationType是in_person时，才会进行距离筛选，距离筛选单位是miles）
+3. 给定zipcode、radius、search 检查关键词筛选正确性
+3. 给定zipcode、radius、age 检查年龄筛选正确性
+4. 给定zipcode、radius、camp_types （注意，除了AnyType，其余选项时，返回课程必须包含全部camp_types）
+    4.1 camp_types 分别为单项时
+    4.2 camp_types 分别为除了AnyType的两两组合时
+    4.3 camp_types 分别为除了AnyType的三项时
+5. 给定zipcode、radius、camp_options （如果facility是both，那么camp_options为indoor和outdoor都可以返回；如果camp_options为indoor和outdoor，只能返回facility是both）
+    4.1 camp_options 分别为单项时
+    4.2 camp_options 为两项组合时
+    4.3 camp_options 为三项组合时
+    4.4 camp_options 为随机组合时
+6. 你进行随机测试
+
+
+注意以上测试的前提，是你分析数据后，知道符合筛选逻辑的条数，然后反过来去设计query并检查query的返回结果是否符合预期。
+注意这里的返回结果会按照businessID进行聚合，所以你要检查对应的返回值。
+
+你可以参考附件1进行flask的api测试，但我不要压力测试，我要功能的单测（全覆盖的白盒测试）。
+
+附件1：
+import unittest
+from flask import Flask
+import sys
+import os
+import time
+import concurrent.futures
+import numpy as np
+import random
+
+# 将项目根目录添加到 sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from app import app  # 替换为你的 Flask 应用模块名
+
+# 活动列表
+ACTIVITIES = [
+    "Sports", "Arts", "General", "Academic", "Life Skills", "Social"
+]
+
+SPORTS = [
+    "Martial Arts",
+    "Basketball",
+    "Fencing",
+    "Wrestling",
+    "Soccer",
+    "Gymnastics",
+    "Lacrosse",
+    "Swimming",
+    "Equestrian Sports",
+    "Brazilian Jiu-Jitsu"
+]
+
+ACADEMIC = [
+    "PreSchool",
+    "Test Preparation",
+    "Math",
+    "STEM",
+    "Coding",
+    "Science",
+    "Chess",
+    "Reading",
+    "Writing",
+    "Special Needs Support"
+]
+
+ARTS = [
+    "Music",
+    "Painting",
+    "Drawing",
+    "Dance",
+    "Theater",
+    "Handcrafts",
+    "Sculpture",
+    "Musical",
+    "Performing",
+    "Ballet"
+]
+
+
+OTHERS = [
+    "STEM", 
+    "learning", 
+    "program", 
+    "children", 
+    "education", 
+    "skills", 
+    "reading", 
+    "writing", 
+    "math", 
+    "thinking"
+]
+
+# 纽约的邮编列表
+ZIP_CODES = [
+    "07072", ...
+]
+
+# 营地类型
+CAMP_TYPES = ["AnyType", "FullDayCamp", "HalfDayCamp", "SleepawayCamp"]
+
+# 营地选项
+CAMP_OPTIONS = ["Indoor", "Outdoor", "Lunch", "EarlyDropoff", "Transportation", "LatePickup"]
+
+class FlaskAppTestCase(unittest.TestCase):
+
+    def setUp(self):
+        # 创建测试客户端
+        self.app = app.test_client()
+        self.app.testing = True
+
+    def send_request(self, query, zip_code, radius, is_detail_search, age, camp_types, camp_options):
+        """发送请求并返回响应时间和状态码"""
+        start_time = time.time()
+        final_query = query
+        if query == "Sports":
+            final_query += " " + random.choice(SPORTS)
+        if query == "Academic":
+            final_query += " " + random.choice(ACADEMIC)
+        if query == "Arts":
+            final_query += " " + random.choice(ARTS)
+        
+        for i in range(0, random.randint(1, 3)):
+            final_query += " " + random.choice(OTHERS)
+
+        url = f'/GetOfferingsTextQuery?search={query}&zipCode={zip_code}&radius={radius}'
+        if is_detail_search.lower() == "true":
+            
+            url += f'&age={age}'
+            for i, t in enumerate(camp_types):
+                url += f'&campType={t}'
+            for i, o in enumerate(camp_options):
+                url += f'&campOptions={o}'
+
+        response = self.app.get(url)
+        end_time = time.time()
+        is_empty = 0
+        if response.status_code != 200:
+            print(f"Error: {response.status_code} {url}")
+        if response.status_code == 200 and len(response.get_json()) == 0:
+            print(f"Warning: Empty response {url}")
+            is_empty = 1
+        return end_time - start_time, response.status_code, is_empty
+
+    ...
+
+附件2，数据集csv：
+activity	activityCategory	ageGroup	businessFullName	businessID	campOptions	campSessionOptions	earlyDropOff	facility	latePickup	location	locationDisplayName	locationType	lunchIncluded	offeringInsightSummary	offeringName	transportation
+Basketball, Soccer, Tennis, Golf, Swimming, Yoga	Sports	{'gte': 6, 'lte': 12}	Fundamentals Sports Camp	9		['FullDayCamp']	yes	both	yes	{'zipcode': '08889', 'name': '811 Rattlesnake Bridge Rd. Bedminster, NJ 07921', 'geo_info': {'lon': -74.72162420000001, 'lat': 40.63991120000001}}	Bedminster, NJ	in_person	yes	['Art & science activities included', 'Project-based STEAM activities', 'Lunch and snack provided']	Fundamentals Day Camp at Fiddler’s Elbow	no
+Tennis, Golf	Sports	{'gte': 5, 'lte': 12}	Fundamentals Sports Camp	9		['FullDayCamp']	no	both	no	{'zipcode': '07021', 'name': '19 Devon Road Essex Fells, NJ 07021', 'geo_info': {'lon': -74.26632479999999, 'lat': 40.8290308}}	Essex Fells, NJ	in_person	yes	['Team sports and games', 'Creative arts', 'Swimming and chill time']	Fundamentals Day Camp at Essex Fells Country Club	no
+Tennis	Sports	{'gte': 5, 'lte': 12}	Fundamentals Sports Camp	9		['FullDayCamp']	no	both	no	{'zipcode': '07750', 'name': '65 Ocean Avenue Monmouth Beach, NJ 07750', 'geo_info': {'lon': -73.9741581, 'lat': 40.3321201}}	Monmouth Beach, NJ	in_person	no	['Team sports and games', 'Beach activities and games', 'Character education lessons']	Fundamentals Day Camp at Monmouth Beach Club	no
+Tennis, Pickleball	Sports	{'gte': 5, 'lte': 12}	Fundamentals Sports Camp	9		['FullDayCamp']	no	both	no	{'zipcode': '07740', 'name': '1035 Ocean Avenue Elberon, NJ 07740', 'geo_info': {'lon': -73.9862852, 'lat': 40.2695997}}	Elberon, NJ	in_person	no	['Prime beach-front location', '25 yard pool', '6 har-tru tennis courts']	Fundamentals Day Camp at Ocean Beach Club	no
+Swimming	Sports	{'gte': 6, 'lte': 12}	Fundamentals Sports Camp	9		['FullDayCamp']	no	indoor	no	{'zipcode': '07042', 'name': '65 Chestnut St. Montclair, NJ 07042', 'geo_info': {'lon': -74.210471, 'lat': 40.8208377}}	Montclair, NJ	in_person	no	['Explore different themes weekly', 'Crafts, cooking, and movement activities', 'Swimming at the Geyer -YMCA']	Summer of FUN Camp at Montclair Cooperative School	no
+Sports	Sports	{'gte': None, 'lte': None}	Pyramid Youth and Adult Fitness	13		['Lesson']	no	both	no	{'name': 'Your location'}	Your location	in_person	no	['Continuous, non-competitive sports', 'Brought to your location', 'Choose from a variety of games']	Sports, Fun & Games Birthday Parties	no
+Sports	Sports	{'gte': 5, 'lte': 8}	Pyramid Youth and Adult Fitness	13		['FullDayCamp']	no	indoor	no	{'zipcode': '07052', 'name': 'The Atkins Medical Plaza1500 Pleasant Valley Way, LL105West Orange, NJ 07052', 'geo_info': {'lon': -74.285164, 'lat': 40.77039449999999}}	West Orange, NJ	in_person	no	['Fun, non-competitive environment', 'Fundamental movement skills', 'Gaining confidence']	Youth Fitness Programs (K-2nd Grade)	no
+Sports	Sports	{'gte': 8, 'lte': 11}	Pyramid Youth and Adult Fitness	13		['FullDayCamp']	no	indoor	no	{'zipcode': '07052', 'name': 'The Atkins Medical Plaza1500 Pleasant Valley Way, LL105West Orange, NJ 07052', 'geo_info': {'lon': -74.285164, 'lat': 40.77039449999999}}	West Orange, NJ	in_person	no	['Improving self-esteem', 'Foundation of body weight strength', 'Motor skill development']	Youth Fitness Programs (3rd-5th Grade)	no
+Sports	Sports	{'gte': 11, 'lte': 14}	Pyramid Youth and Adult Fitness	13		['FullDayCamp']	no	indoor	no	{'zipcode': '07052', 'name': 'The Atkins Medical Plaza1500 Pleasant Valley Way, LL105West Orange, NJ 07052', 'geo_info': {'lon': -74.285164, 'lat': 40.77039449999999}}	West Orange, NJ	in_person	no	['Develops and enhances athletic performance', 'Improves muscular strength & endurance', 'Enhances overall athleticism']	Youth Fitness Programs (6th-8th Grade)	no
+Sports	Sports	{'gte': 14, 'lte': 18}	Pyramid Youth and Adult Fitness	13		['FullDayCamp']	no	indoor	no	{'zipcode': '07052', 'name': 'The Atkins Medical Plaza1500 Pleasant Valley Way, LL105West Orange, NJ 07052', 'geo_info': {'lon': -74.285164, 'lat': 40.77039449999999}}	West Orange, NJ	in_person	no	['Varied high intensity functional movements', 'Enhancing athletic performance', 'Maximizing overall fitness']	Youth Fitness Programs (9th-12th Grade)	no
+Kickboxing	Sports	{'gte': 6, 'lte': 18}	Pyramid Youth and Adult Fitness	13		['FullDayCamp']	no	indoor	no	{'zipcode': '07052', 'name': 'The Atkins Medical Plaza1500 Pleasant Valley Way, LL105West Orange, NJ 07052', 'geo_info': {'lon': -74.285164, 'lat': 40.77039449999999}}	West Orange, NJ	in_person	no	['Combines martial arts techniques', 'Fast-paced cardio', 'Full body workout']	Cardio Kickboxing for Youth	no
+Basketball, Soccer, Yoga, Dance	Sports	{'gte': 5, 'lte': 10}	Linden’s Best After School & Summer Camp	21		['FullDayCamp']	no	indoor	no	{'zipcode': '07036', 'name': '2117 Grier Avenue, Linden NJ 07036', 'geo_info': {'lon': -74.2237562, 'lat': 40.64519809999999}}	Linden, NJ	in_person	no	['Develops confidence, discipline, respect', 'Arts, crafts, indoor/outdoor sports', 'Trusted coaches, background checks']	Linden's BEST Summer Camp	no
+Baseball	Sports	{'gte': 5, 'lte': 11}	Coach McKay Baseball Camp @ FDU	105		['FullDayCamp']	no	both	no	{'zipcode': '07094', 'name': 'Secaucus Little League Field, 200 First Ave, Secaucus, NJ 07094', 'geo_info': {'lon': -74.0559646, 'lat': 40.7900737}}	Secaucus, NJ	in_person	yes	['Lunch included', 'Campers grouped by age/ability', 'Taught by former/current D1 players']	Secaucus Youth Camp @ Secaucus Little League Field - Week 1	no
+Baseball	Sports	{'gte': 5, 'lte': 11}	Coach McKay Baseball Camp @ FDU	105		['FullDayCamp']	no	both	no	{'zipcode': '07030', 'name': 'Sgt. W Feskens Memorial Little League Field, 25-5th Street, Hoboken, NJ 07030', 'geo_info': {'lon': -74.02715069999999, 'lat': 40.7413537}}	Hoboken, NJ	in_person	yes	['Lunch included', 'Campers grouped by age/ability', 'Taught by former/current D1 players']	Hoboken Youth Camp @ Hoboken Little League Field - Week 1	no
+Baseball	Sports	{'gte': 5, 'lte': 11}	Coach McKay Baseball Camp @ FDU	105		['FullDayCamp']	no	both	no	{'zipcode': '07030', 'name': 'Sgt. W Feskens Memorial Little League Field, 25-5th Street, Hoboken, NJ 07030', 'geo_info': {'lon': -74.02715069999999, 'lat': 40.7413537}}	Hoboken, NJ	in_person	yes	['Lunch included', 'Campers grouped by age/ability', 'Taught by former/current D1 players']	Hoboken Youth Camp @ Hoboken Little League Field - Week 2	no
+Baseball	Sports	{'gte': 5, 'lte': 11}	Coach McKay Baseball Camp @ FDU	105		['FullDayCamp']	no	both	no	{'zipcode': '07094', 'name': 'Secaucus Little League Field, 200 First Ave, Secaucus, NJ 07094', 'geo_info': {'lon': -74.0559646, 'lat': 40.7900737}}	Secaucus, NJ	in_person	yes	['Lunch included', 'Campers grouped by age/ability', 'Taught by former/current D1 players']	Secaucus Youth Camp @ Secaucus Little League Field - Week 2	no
+Gymnastics, Soccer	Sports	{'gte': None, 'lte': None}	Head To Toe	18		['HalfDayCamp', 'FullDayCamp']	no	both	no	{'name': None}		in_person	no	['Gymnastics, soccer, martial arts, yoga', 'Promotes teamwork & builds confidence', 'Discipline & Respect']	Summer Camp	no
+Baseball	Sports	{'gte': 8, 'lte': 18}	NJYB	115		['FullDayCamp']	no	both	no	{'zipcode': '07601', 'name': 'Foschini Park, Hackensack, NJ', 'geo_info': {'lon': -74.03662200000001, 'lat': 40.885452}}	Hackensack, NJ	in_person	no	['Flexible schedule', '14 game schedule', 'NJYB League Tournament']	NJYB Summer League	no
+Basketball, Lacrosse, Flag Football, Baseball, Soccer, Tennis	Sports	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp', 'FullDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Comprehensive skill development', 'Experienced coaches', 'Focus on teamwork and sportsmanship']	Next Level Day Camp - Traditional Sports	no
+Gaga, Floor Hockey, Rugby, Ultimate Frisbee	Sports	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp', 'FullDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Fast-paced and inclusive', 'Focus on agility and teamwork', 'Emphasis on good sportsmanship']	Next Level Day Camp - Unique Sports	no
+DJ, Magic Performance, Cooking, Fencing, Martial Arts, Photography, Theater/Drama, Dance	Arts	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp', 'FullDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Opportunity to explore various art forms', 'Develop artistic talents', 'Supportive and inspiring environment']	Next Level Day Camp - Elective Activities	no
+Coding, Robotics, STEM	Academic	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp', 'FullDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Creative thinking in STEM areas', 'Informed mentors', 'Electronics, coding, and robotics']	Next Level Day Camp - STEM Activities	no
+Dance	Arts	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Learn techniques and styles of dance', 'Expert instructors', 'Competitive camp']	Dance Battles Academy	no
+Video Production	Arts	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Produce camp newscasts', 'Learn about journalism', 'Play the role of reporters and anchors']	Next Level Media	no
+Science	Academic	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Hands-on fun', 'Explore science-related activities', 'Create amazing reactions']	Wacky Science	no
+Theater/Drama	Arts	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Actors work to reach their potential', 'Develop close bonds', 'Inspire a love for the art']	Theater	no
+Fashion	Arts	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Learn from concept to design', 'Create mood boards and sketches', 'Debut designs on the catwalk']	Fashion Academy	no
+Cooking	Life Skills	{'gte': None, 'lte': None}	Next Level Day Camp in Saddle River	12		['HalfDayCamp']	no	both	no	{'zipcode': '07458', 'name': '147 Chestnut Ridge Rd, Saddle River, NJ 07458', 'geo_info': {'lon': -74.08520469999999, 'lat': 41.0310871}}	Saddle River, NJ	in_person	no	['Create delicious food', 'Inspired by cuisine from around the world', 'Gain confidence with culinary techniques']	Cooking Academy	no
+Badminton	Sports	{'gte': None, 'lte': None}	International Badminton Center	87		[]	no	indoor	no	{'zipcode': '08820', 'name': '3775 Park Ave, Unit 8A, Edison, NJ 08820', 'geo_info': {'lon': -74.3861443, 'lat': 40.5750697}}	Edison, NJ	in_person	no	['Junior and adult programs', 'Contact for details']	2025 Badminton Training Enrollment - Edison	no
+Badminton	Sports	{'gte': None, 'lte': None}	International Badminton Center	87		[]	no	indoor	no	{'zipcode': '07058', 'name': '10 New Maple Ave, Unit 302, Pine Brook, NJ 07058', 'geo_info': {'lon': -74.33441619999999, 'lat': 40.8623926}}	Pine Brook, NJ	in_person	no	['Junior and adult programs', 'Contact for details']	2025 Badminton Training Enrollment - Pine Brook	no
+Badminton	Sports	{'gte': None, 'lte': None}	International Badminton	82		[]	no	indoor	no	{'zipcode': '08820', 'name': '3775 Park Ave, Unit 8A, Edison, NJ 08820', 'geo_info': {'lon': -74.3861443, 'lat': 40.5750697}}	Edison, NJ	in_person	no	['Junior program available', 'Contact for details']	2025 Badminton Training - Edison Junior Program	no
+Badminton	Sports	{'gte': None, 'lte': None}	International Badminton	82		[]	no	indoor	no	{'zipcode': '08820', 'name': '3775 Park Ave, Unit 8A, Edison, NJ 08820', 'geo_info': {'lon': -74.3861443, 'lat': 40.5750697}}	Edison, NJ	in_person	no	['Adult program available', 'Contact for details']	2025 Badminton Training - Edison Adult Program	no
+Badminton	Sports	{'gte': None, 'lte': None}	International Badminton	82		[]	no	indoor	no	{'zipcode': '07058', 'name': '10 New Maple Ave, Unit 302, Pine Brook, NJ 07058', 'geo_info': {'lon': -74.33441619999999, 'lat': 40.8623926}}	Pine Brook, NJ	in_person	no	['Junior program available', 'Contact for details']	2025 Badminton Training - Pine Brook Junior Program	no
+Badminton	Sports	{'gte': None, 'lte': None}	International Badminton	82		[]	no	indoor	no	{'zipcode': '07058', 'name': '10 New Maple Ave, Unit 302, Pine Brook, NJ 07058', 'geo_info': {'lon': -74.33441619999999, 'lat': 40.8623926}}	Pine Brook, NJ	in_person	no	['Adult program available', 'Contact for details']	2025 Badminton Training - Pine Brook Adult Program	no
+Diving	Sports	{'gte': 0, 'lte': 17}	East Coast Diving Center Inc	380		['FullDayCamp']	no	no	no	{'zipcode': '', 'name': 'St. Eustatius', 'geo_info': {'lon': -62.973555, 'lat': 17.4890306}}	St. Eustatius	in_person	no	['8-day diving package', 'All-inclusive resort stay', '5 days of 2-tank dives']	Golden Rock Dive & Nature Resort in St. Eustatius	no
+Brazilian Jiu-Jitsu, Martial Arts	Sports	{'gte': 5, 'lte': 17}	Nova Uniao Brazilian Jiu-Jitsu Academy	272		['HalfDayCamp', 'FullDayCamp']	no	indoor	no	{'zipcode': '07029', 'name': '756 Harrison Ave. Harrison, NJ 07029', 'geo_info': {'lon': -74.1481727, 'lat': 40.74787999999999}}	Harrison, NJ	in_person	no	['Learn self-defense skills', 'Improve physical fitness', 'Build confidence']	Kids Brazilian Jiu-Jitsu Summer Camp	no
+Boxing	Sports	{'gte': 5, 'lte': 18}	Little Mac Boxing Gym	219		['Lesson']	no	indoor	no	{'zipcode': '07047', 'name': '430 75th St North Bergen, New Jersey 07047', 'geo_info': {'lon': -74.0078206, 'lat': 40.7989466}}	North Bergen, NJ	in_person	no	['Learn boxing fundamentals', 'Full-body workout', 'Improve confidence']	Boxing Summer Camp	no
+Kickboxing	Sports	{'gte': 5, 'lte': 18}	Little Mac Boxing Gym	219		['Lesson']	no	indoor	no	{'zipcode': '07047', 'name': '430 75th St North Bergen, New Jersey 07047', 'geo_info': {'lon': -74.0078206, 'lat': 40.7989466}}	North Bergen, NJ	in_person	no	['Authentic full-body workout', 'Strengthen arms, legs, core', 'Improve stamina and confidence']	Kick Boxing Summer Camp	no
+Boxing	Sports	{'gte': 5, 'lte': 18}	Little Mac Boxing Gym	219		['Lesson']	no	indoor	no	{'zipcode': '07047', 'name': '430 75th St North Bergen, New Jersey 07047', 'geo_info': {'lon': -74.0078206, 'lat': 40.7989466}}	North Bergen, NJ	in_person	no	['Authentic full-body boxing workout', 'Strengthen arms, legs, core', 'Improve stamina and confidence']	Cross FIGHT™ Summer Camp	no
+Archery	Sports	{'gte': None, 'lte': None}	Lincoln Park Archers	63		['Lesson']	no	both	no	{'zipcode': '07082', 'name': 'Camp Dawson Park, Montville, NJ', 'geo_info': {'lon': -74.3435265, 'lat': 40.9412894}}	Montville, NJ	in_person	no	['Utilizes the N.A.S.P. program', 'Run through town recreation', 'For kids']	Kids League (NASP Program)	no
+Sports	Sports	{'gte': None, 'lte': None}	Impact Zone Fitness and Sports Performance	38		[]	no	indoor	no	{'zipcode': '07648', 'name': '335 Chestnut Street, Norwood, NJ 07648', 'geo_info': {'lon': -73.9519878, 'lat': 40.9914875}}	Norwood, NJ	in_person	no	['Develops fitness habits', 'Fun and engaging activities', 'Trained and certified instructors']	Kids Fitness Academy	no
+Gymnastics	Sports	{'gte': None, 'lte': None}	Athletic Arts Academy	70		['FullDayCamp']	no	indoor	no	{'zipcode': '07050', 'name': '23 South Essex Avenue, Suite B, Orange, NJ 07050', 'geo_info': {'lon': -74.2317752, 'lat': 40.7721512}}	Orange, NJ	in_person	no	[]	Summer Camp	no
+Basketball	Sports	{'gte': 7, 'lte': 16}	A1 Basketball	166		['FullDayCamp']	no	indoor	no	{'zipcode': '08034', 'name': '1820 Old Cuthbert Rd, Cherry Hill, NJ 08034', 'geo_info': {'lon': -74.98128179999999, 'lat': 39.9106945}}	Cherry Hill, NJ	in_person	no	['Experienced, knowledgeable coaches', 'Build confidence and compete', 'Form new friendships']	A1 Basketball Summer Camp (Full Day)	no
+Basketball	Sports	{'gte': 4, 'lte': 6}	A1 Basketball	166		['HalfDayCamp']	no	indoor	no	{'zipcode': '08034', 'name': '1820 Old Cuthbert Rd, Cherry Hill, NJ 08034', 'geo_info': {'lon': -74.98128179999999, 'lat': 39.9106945}}	Cherry Hill, NJ	in_person	no	['Experienced, knowledgeable coaches', 'Build confidence and compete', 'Form new friendships']	Intro to Basketball Camp (Half Day)	no
+Martial Arts, Brazilian Jiu-Jitsu	Sports	{'gte': None, 'lte': None}	Momentum Brazilian Jiu-Jitsu	242		[]	no	both	no	{'zipcode': '', 'name': 'Nutley, NJ', 'geo_info': {'lon': -74.16251199999999, 'lat': 40.8151107}}	Nutley, NJ	in_person	no	[]	Spring Break Camp	no
+Basketball, Swimming	Sports	{'gte': 0, 'lte': 12}	LA Fitness	50		['HalfDayCamp']	no	indoor	no	{'zipcode': '07012', 'name': '852 ROUTE 3, CLIFTON, NJ 07012', 'geo_info': {'lon': -74.1571712, 'lat': 40.8387603}}	CLIFTON, NJ	in_person	no	["Supervised kids' activities.", 'Safe and fun environment.', 'Allows parents to workout.']	Kids Klub	no
+Martial Arts, Brazilian Jiu-Jitsu	Sports	{'gte': None, 'lte': None}	Team Curuma Brazilian Jiu-Jitsu Academy	254		[]	no	indoor	no	{'zipcode': '07047', 'name': '9019 Old River Road, 2nd Floor, North Bergen, NJ', 'geo_info': {'lon': -73.9933595, 'lat': 40.8054218}}	North Bergen, NJ	in_person	no	['Learn balance, coordination, motor skills', 'Develop confidence, discipline, teamwork', 'Taught by accomplished instructors']	Kids BJJ & Self-Defense Summer Program	no
+Math, Chess, Language, English, STEM, STEAM, Coding, Robotics	Academic	{'gte': 3, 'lte': 12}	Brighter Bee Academy	43		['FullDayCamp']	no	both	no	{'zipcode': '07302', 'name': '278 Monmouth St, Jersey City, NJ 07302', 'geo_info': {'lon': -74.0510686, 'lat': 40.718261}}	Jersey City, NJ	in_person	no	['Offers a variety of subjects', 'Provides hands-on learning', 'Focuses on academic skills']	Brighter Bee Academy Summer Camp	yes
+Bowling	Sports	{'gte': 5, 'lte': 17}	East Windsor Bowl & Recreation Center	198		['FullDayCamp']	no	indoor	no	{'zipcode': '08520', 'name': '529 US Highway 130 North, East Windsor, NJ 08520', 'geo_info': {'lon': -74.54281, 'lat': 40.2658209}}	East Windsor, NJ	in_person	no	['Suitable for all ages', 'New bar & grill', 'Packages to fit every budget']	Bowling Summer Camp	no
+Boxing	Sports	{'gte': 5, 'lte': 17}	World Boxing Gym	223		['Lesson']	no	indoor	no	{'zipcode': '07302', 'name': '29 Division St, Jersey City, NJ 07302', 'geo_info': {'lon': -74.0522212, 'lat': 40.72711229999999}}	Jersey City, NJ	in_person	no	['Cardio, core, strength, technique', 'Learn boxing drills and defense', 'Accommodates all skill levels']	Beginner Group Boxing Session	no
+Boxing	Sports	{'gte': 5, 'lte': 17}	World Boxing Gym	223		['Lesson']	no	indoor	no	{'zipcode': '07302', 'name': '29 Division St, Jersey City, NJ 07302', 'geo_info': {'lon': -74.0522212, 'lat': 40.72711229999999}}	Jersey City, NJ	in_person	no	['Cardio, core, strength, technique', 'Learn boxing drills and defense', 'Accommodates all skill levels']	Wednesday Group Boxing Session	no
+Boxing	Sports	{'gte': 5, 'lte': 17}	World Boxing Gym	223		['Lesson']	no	indoor	no	{'zipcode': '07302', 'name': '29 Division St, Jersey City, NJ 07302', 'geo_info': {'lon': -74.0522212, 'lat': 40.72711229999999}}	Jersey City, NJ	in_person	no	['Cardio, core, strength, technique', 'Learn boxing drills and defense', 'Accommodates all skill levels']	Advanced Group Boxing Session	no
+Boxing	Sports	{'gte': 5, 'lte': 17}	World Boxing Gym	223		['Lesson']	no	indoor	no	{'zipcode': '07302', 'name': '29 Division St, Jersey City, NJ 07302', 'geo_info': {'lon': -74.0522212, 'lat': 40.72711229999999}}	Jersey City, NJ	in_person	no	['Cardio, core, strength, technique', 'Learn boxing drills and defense', 'Accommodates all skill levels']	Saturday Group Boxing Session	no
+Barre, Pilates	Sports	{'gte': 5, 'lte': 17}	Move House Montclair	22		['Lesson']	no	indoor	no	{'zipcode': '07043', 'name': '260 Bellevue ave, Montclair, NJ 07043', 'geo_info': {'lon': -74.20892169999999, 'lat': 40.8411601}}	Montclair, NJ	in_person	no	['Signature sculpt class', 'Blend of barre and pilates', 'Low impact, high energy']	Sculpt Summer Camp	no
+Barre	Sports	{'gte': 5, 'lte': 17}	Move House Montclair	22		['Lesson']	no	indoor	no	{'zipcode': '07043', 'name': '260 Bellevue ave, Montclair, NJ 07043', 'geo_info': {'lon': -74.20892169999999, 'lat': 40.8411601}}	Montclair, NJ	in_person	no	['Low impact, high energy', 'Lengthens muscles', 'No dance experience needed']	Barre Summer Camp	no
+Gymnastics, Ninjia	Sports	{'gte': 3, 'lte': 6}	IMC KIDS GYM	1		['Lesson']	no	indoor	no	{'zipcode': '07043', 'name': '198 Bellevue Ave, Upper Montclair, NJ', 'geo_info': {'lon': -74.2056657, 'lat': 40.84043459999999}}	Upper Montclair, NJ	in_person	no	['Develops motor skills', 'Fun obstacle courses', 'Small group format']	IMC Kids Gym Summer Program (Ages 3-6)	no
+Gymnastics, Ninjia	Sports	{'gte': 7, 'lte': 13}	IMC KIDS GYM	1		['Lesson']	no	indoor	no	{'zipcode': '07043', 'name': '40 Belden Place, Upper Montclair, NJ', 'geo_info': {'lon': -74.20394379999999, 'lat': 40.8494774}}	Upper Montclair, NJ	in_person	no	['Builds strength and agility', 'Collaborative games', 'Non-competitive environment']	IMC FIT Summer Program (Ages 7-13)	no
+Archery	Sports	{'gte': 0, 'lte': 17}	Bloomfield Archers	64		['FullDayCamp']	no	outdoor	no	{'zipcode': '07003', 'name': 'The northwest corner of Brookdale Park, Near the intersection of Bellevue and Glenside Terrace in Montclair, NJ 07043', 'geo_info': {'lon': -74.19285459999999, 'lat': 40.8346766}}	Montclair, NJ	in_person	no	['Weekly Sunday archery shoots', 'Access to field and equipment', 'Family memberships available']	Bloomfield Archers Summer Archery Program	no
+Climbing	Sports	{'gte': 7, 'lte': 14}	Elite Climbing, LLC	301		['HalfDayCamp', 'FullDayCamp', 'FullDayCamp']	yes	indoor	yes	{'zipcode': '08052', 'name': '67 Old Kings Highway, Maple Shade, NJ 08052', 'geo_info': {'lon': -74.9814071, 'lat': 39.9413757}}	Maple Shade, NJ	in_person	no	['Develop climbing skills and knowledge', 'Focus on climbing safety', 'Build strength, balance, and agility']	Summer Camp Week 1	no
+Climbing	Sports	{'gte': 7, 'lte': 14}	Elite Climbing, LLC	301		['HalfDayCamp', 'FullDayCamp', 'FullDayCamp']	yes	indoor	yes	{'zipcode': '08052', 'name': '67 Old Kings Highway, Maple Shade, NJ 08052', 'geo_info': {'lon': -74.9814071, 'lat': 39.9413757}}	Maple Shade, NJ	in_person	no	['Develop climbing skills and knowledge', 'Focus on climbing safety', 'Build strength, balance, and agility']	Summer Camp Week 2	no
+Climbing	Sports	{'gte': 7, 'lte': 14}	Elite Climbing, LLC	301		['HalfDayCamp', 'FullDayCamp', 'FullDayCamp']	yes	indoor	yes	{'zipcode': '08052', 'name': '67 Old Kings Highway, Maple Shade, NJ 08052', 'geo_info': {'lon': -74.9814071, 'lat': 39.9413757}}	Maple Shade, NJ	in_person	no	['Develop climbing skills and knowledge', 'Focus on climbing safety', 'Build strength, balance, and agility']	Summer Camp Week 3	no
+Climbing	Sports	{'gte': 7, 'lte': 14}	Elite Climbing, LLC	301		['HalfDayCamp', 'FullDayCamp', 'FullDayCamp']	yes	indoor	yes	{'zipcode': '08052', 'name': '67 Old Kings Highway, Maple Shade, NJ 08052', 'geo_info': {'lon': -74.9814071, 'lat': 39.9413757}}	Maple Shade, NJ	in_person	no	['Develop climbing skills and knowledge', 'Focus on climbing safety', 'Build strength, balance, and agility']	Summer Camp Week 4	no
+Climbing	Sports	{'gte': 7, 'lte': 14}	Elite Climbing, LLC	301		['HalfDayCamp', 'FullDayCamp', 'FullDayCamp']	yes	indoor	yes	{'zipcode': '08052', 'name': '67 Old Kings Highway, Maple Shade, NJ 08052', 'geo_info': {'lon': -74.9814071, 'lat': 39.9413757}}	Maple Shade, NJ	in_person	no	['Develop climbing skills and knowledge', 'Focus on climbing safety', 'Build strength, balance, and agility']	Summer Camp Week 5	no
+Climbing	Sports	{'gte': 7, 'lte': 14}	Elite Climbing, LLC	301		['HalfDayCamp', 'FullDayCamp', 'FullDayCamp']	yes	indoor	yes	{'zipcode': '08052', 'name': '67 Old Kings Highway, Maple Shade, NJ 08052', 'geo_info': {'lon': -74.9814071, 'lat': 39.9413757}}	Maple Shade, NJ	in_person	no	['Develop climbing skills and knowledge', 'Focus on climbing safety', 'Build strength, balance, and agility']	Summer Camp Week 6	no
+Painting, Drawing, Sculpture, Handcrafts	Arts	{'gte': 5, 'lte': 12}	Art Studio Now	1203		['HalfDayCamp']	no	both	no	{'zipcode': '07756', 'name': '66 Main Avenue in Studio 27, Ocean Grove, NJ', 'geo_info': {'lon': -74.0080445, 'lat': 40.2121237}}	Ocean Grove, NJ	in_person	no	['Explore museums and start collecting', 'Custom passport bookmaking', 'Native cuisine provided on Fridays']	Summer Art Camp - Wunderkammer	no
+Painting, Drawing, Sculpture, Handcrafts	Arts	{'gte': 5, 'lte': 12}	Art Studio Now	1203		['HalfDayCamp']	no	both	no	{'zipcode': '07756', 'name': '66 Main Avenue in Studio 27, Ocean Grove, NJ', 'geo_info': {'lon': -74.0080445, 'lat': 40.2121237}}	Ocean Grove, NJ	in_person	no	['Explore museums and start collecting', 'Custom passport bookmaking', 'Native cuisine provided on Fridays']	Summer Art Camp - Riksmuseum: Amsterdam	no
+Painting, Drawing, Sculpture, Handcrafts	Arts	{'gte': 5, 'lte': 12}	Art Studio Now	1203		['HalfDayCamp']	no	both	no	{'zipcode': '07756', 'name': '66 Main Avenue in Studio 27, Ocean Grove, NJ', 'geo_info': {'lon': -74.0080445, 'lat': 40.2121237}}	Ocean Grove, NJ	in_person	no	['Explore museums and start collecting', 'Custom passport bookmaking', 'Native cuisine provided on Fridays']	Summer Art Camp - Louisiana: Denmark	no
+Painting, Drawing, Sculpture, Handcrafts	Arts	{'gte': 5, 'lte': 12}	Art Studio Now	1203		['HalfDayCamp']	no	both	no	{'zipcode': '07756', 'name': '66 Main Avenue in Studio 27, Ocean Grove, NJ', 'geo_info': {'lon': -74.0080445, 'lat': 40.2121237}}	Ocean Grove, NJ	in_person	no	['Explore museums and start collecting', 'Custom passport bookmaking', 'Native cuisine provided on Fridays']	Summer Art Camp - Wunderkammer (Repeat)	no
+Painting, Drawing, Sculpture, Handcrafts	Arts	{'gte': 5, 'lte': 12}	Art Studio Now	1203		['HalfDayCamp']	no	both	no	{'zipcode': '07756', 'name': '66 Main Avenue in Studio 27, Ocean Grove, NJ', 'geo_info': {'lon': -74.0080445, 'lat': 40.2121237}}	Ocean Grove, NJ	in_person	no	['Explore museums and start collecting', 'Custom passport bookmaking', 'Native cuisine provided on Fridays']	Summer Art Camp - Riksmuseum: Amsterdam (Repeat)	no
+Tutoring	Academic	{'gte': 5, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	in_person	no	['Tutoring for Math, Science & Language Arts', 'For grades K-12', 'Online and in-person options']	Tutoring Classes Summer 2025	no
+Test Preparation	Academic	{'gte': 8, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	hybrid	no	['Test prep for PARCC, COOP, ISEE, SAT, ACT', 'Online and in-person options', 'For grades 3-12']	Test Prep Classes Summer 2025	no
+Chess, Math	Academic	{'gte': 9, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	hybrid	no	['Prep for Math Olympiad, Math Kangaroo, AMC', 'For grades 4-12', 'Online and in-person options']	Math Competitions Prep Summer 2025	no
+Music	Arts	{'gte': 5, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	in_person	no	['Learn piano, guitar, drums, or vocals', '30-minute 1-on-1 sessions', 'For ages 5+']	Music Classes Summer 2025	no
+Chess	Academic	{'gte': 6, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	hybrid	no	['For all skill levels', 'Small group setting', 'In-person and online options']	Chess Classes Summer 2025	no
+Painting, Drawing, Sculpture	Arts	{'gte': 6, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	in_person	no	['Learn drawing, sketching, painting, sculpting', 'Small group setting', 'For ages 6+']	Arts Classes Summer 2025	no
+Coding, Programming	Academic	{'gte': 6, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	in_person	no	['Learn Scratch, Python, Java', 'Build your own computer programs', 'Online and in-person options']	Computer Programming Classes Summer 2025	no
+Coding	Academic	{'gte': 6, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	in_person	no	['Build smartphone game apps', 'Learn visual programming', 'For ages 6+']	App Development Classes Summer 2025	no
+Robotics	Academic	{'gte': 6, 'lte': 18}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	in_person	no	['Learn engineering, mechanics, and technology', 'Build and program your own robots using Lego', 'For ages 6+']	Robotics Classes Summer 2025	no
+Yoga	Sports	{'gte': 6, 'lte': 100}	Accel Learning	49		['Lesson']	no	indoor	no	{'zipcode': '07094', 'name': '1317 Paterson Plank Rd. Secaucus NJ 07094', 'geo_info': {'lon': -74.0583615, 'lat': 40.7912014}}	Secaucus NJ	in_person	no	['Improve focus and concentration', 'Reduce distraction and fidgeting', 'Improve memory retention']	Yoga Classes Summer 2025	no
+PreSchool	Academic	{'gte': 0, 'lte': 5}	Our Children's Academy	1036		['FullDayCamp']	yes	both	yes	{'zipcode': '07020', 'name': '280 OLD RIVER ROAD, EDGEWATER, NJ 07020', 'geo_info': {'lon': -73.9901259, 'lat': 40.81015439999999}}	Edgewater, NJ	in_person	yes	['Age-appropriate curriculum', 'Healthy meals and snacks provided', 'Outdoor play area']	Summer Program	no
+Chess, Coding, Robotics, 3D Printing	Academic	{'gte': None, 'lte': None}	Imagination Guru, School of Chess and Computers	1068		['FullDayCamp']	yes	indoor	yes	{'zipcode': '', 'name': 'Montgomery and Princeton Junction, NJ', 'geo_info': {'lon': -74.61987909999999, 'lat': 40.3173301}}	Montgomery and Princeton Junction, NJ	in_person	no	['Chess boosts brain power', 'Coding for the next generation', '3D printing fuels creativity']	Summer Camps: Chess, Coding, Lego Robotics, 3D Printing - Full-Day	yes
+Chess, Coding, Robotics, 3D Printing	Academic	{'gte': None, 'lte': None}	Imagination Guru, School of Chess and Computers	1068		['HalfDayCamp']	yes	indoor	yes	{'zipcode': '', 'name': 'Montgomery and Princeton Junction, NJ', 'geo_info': {'lon': -74.61987909999999, 'lat': 40.3173301}}	Montgomery and Princeton Junction, NJ	in_person	no	['Chess boosts brain power', 'Coding for the next generation', '3D printing fuels creativity']	Summer Camps: Chess, Coding, Lego Robotics, 3D Printing - Half-Day	yes
+Ballet	Arts	{'gte': None, 'lte': None}	Artistic Expression Productions	766		[]	no	indoor	no	{'name': 'Roller Skating Rink or Ice Skating Rink - By Appointment Only'}	Livingston, NJ	in_person	no	['Combines ballet and figure skating', 'Artistic ice skating program', 'By appointment only']	Ballet On Ice - Artistry In Motion Summer Program	no
+Judo	Sports	{'gte': 9, 'lte': 22}	Kokushi kai Judo Academy	554		['SleepawayCamp']	no	both	no	{'zipcode': '18455', 'name': '15 Camp Wayne Road, Preston Park, PA', 'geo_info': {'lon': -75.342253, 'lat': 41.862136}}	Preston Park, PA	in_person	no	['Located on 400 acres with 2 private lakes.', 'Taught by renowned instructors.', 'Scholarships available.']	Kokushikai Judo Camp	yes
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	MLK Day Camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	MLK Day Camp Half Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Lunar New Year Camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Lunar New Year Camp Half Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Presidents Day Camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Presidents Day Camp Half Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Eid al-Fitr Day Camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Eid al-Fitr Day Camp Half Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Montclair BOE Spring Break Camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Montclair BOE Spring Break Camp Half Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Good Friday camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Good Friday camp Half Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Election Day Camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Election Day Camp Half Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['FullDayCamp']	yes	indoor	yes	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Juneteenth Camp Full Day	no
+Soccer	Sports	{'gte': 5, 'lte': 12}	Sports Domain Academy	773		['HalfDayCamp']	yes	indoor	no	{'zipcode': '07013', 'name': '1075 US-46, Clifton, NJ 07013, USA', 'geo_info': {'lon': -74.1793111, 'lat': 40.8705072}}	Clifton, NJ	in_person	no	['Fun games and mini tournaments', 'Learn new soccer skills', 'Multi-sport afternoon session']	Juneteenth Camp Half Day	no
+Scuba Diving	Sports	{'gte': None, 'lte': None}	Elite Divers	374		[]	no	indoor	no	{'zipcode': '07058', 'name': '27 US-46, Pine Brook, NJ 07058, USA', 'geo_info': {'lon': -74.3393694, 'lat': 40.858234}}	Pine Brook, NJ	in_person	no	['Learn to dive with the pros', 'Classes forming now', 'Explore a new underwater world']	PADI Scuba Classes	no
+Karate, Martial Arts	Sports	{'gte': None, 'lte': None}	Dan's School of Martial Arts	610		[]	no	indoor	no	{'zipcode': '07066', 'name': '177 Broadway, Clark, NJ 07066', 'geo_info': {'lon': -74.30125919999999, 'lat': 40.6222022}}	Clark, NJ	in_person	no	['Provides self-discipline and defense', 'All ages and abilities welcome', 'Located in Clark, NJ']	Summer Camp	no
+Cricket	Sports	{'gte': None, 'lte': None}	Stelton Sports	312		[]	no	indoor	no	{'zipcode': '08854', 'name': '527 Stelton Road, Piscataway, New Jersey 08854', 'geo_info': {'lon': -74.4431469, 'lat': 40.5611562}}	Piscataway, NJ	in_person	no	['Specialized programs for all age levels', 'Beginner to enhanced skill trainings', 'Personalized plans available']	Cricket Coaching	no

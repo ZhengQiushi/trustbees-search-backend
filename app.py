@@ -9,22 +9,31 @@ app = Flask(__name__)
 @app.route('/GetBusinessID', methods=['GET'])
 def get_business_id():
     logger.info(f"{request}")
-    request_handler = RequestBusinessID(request.args)
-    return request_handler.execute()
+    try:
+        request_handler = RequestBusinessID(request.args)
+        return request_handler.execute()
+    except Exception as e:
+      return jsonify({"error": f"Invalid request, request={request}, info={str(e)}"}), 400
 
 
 @app.route('/GetBusinessFullName', methods=['GET'])
 def get_business_full_name():
     logger.info(f"{request}")
-    request_handler = RequestBusinessFullName(request.args)
-    return request_handler.execute()
-
+    try:
+        request_handler = RequestBusinessFullName(request.args)
+        return request_handler.execute()
+    except Exception as e:
+      return jsonify({"error": f"Invalid request, request={request}, info={str(e)}"}), 400
 
 @app.route('/GetOfferingsTextQuery', methods=['GET'])
 def get_offerings_text_query():
     logger.info(f"{request}")
-    request_handler = RequestOfferingSearch(request.args)
-    return request_handler.execute()
+    try:
+        request_handler = RequestOfferingSearch(request.args)
+        return request_handler.execute()
+    except Exception as e:
+      return jsonify({"error": f"Invalid request, request={request}, info={str(e)}"}), 400
+    
 
 
 if __name__ == '__main__':
