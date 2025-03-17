@@ -308,6 +308,10 @@ class RequestOfferingSearch(AbstractRequest):
                 # 处理 location 字段
                 if 'location' in hit['_source']:
                     hit['_source']['location'] = parse_location(hit['_source']['location'])
+                if 'locationType' in hit['_source'] and hit['_source']['locationType'] == 'online':
+                    # 临时处理
+                    hit['_source']['locationDisplayName'] = ''
+                    
             return response
         return offering_postprocess(response)
 
