@@ -6,7 +6,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import config
 
-name = "offering_test"
+name = "provider_test"
 
 # 初始化 Elasticsearch 客户端
 client = Elasticsearch(

@@ -90,7 +90,7 @@ class RequestBusinessID(AbstractRequest):
         total_hits = response['hits']['total']['value']
         return {
             "data": hits,
-            "total_hits": total_hits
+            "total_hits": len(hits)
         }
 
 
@@ -101,13 +101,8 @@ class RequestBusinessFullName(AbstractRequest):
     def build_query(self):
         query = {
             "query": {
-                "multi_match": {
-                    "query": self.params.business_name,
-                    "fields": ["businessFullName"],
-                    "type": "most_fields",
-                    "fuzziness": "AUTO",
-                    "operator": "or",
-                    "minimum_should_match": "50%"
+                "match_phrase": {
+                    "businessFullName": self.params.business_name
                 }
             },
             **self.common_query_params()
@@ -125,7 +120,7 @@ class RequestBusinessFullName(AbstractRequest):
         total_hits = response['hits']['total']['value']
         return {
             "data": hits,
-            "total_hits": total_hits
+            "total_hits": len(hits)
         }
 
 
@@ -330,7 +325,7 @@ def business_postprocess(response):
     处理 Elasticsearch 查询结果中的字段转换。
     
     :param response: Elasticsearch 查询结果
-    :return: 处理后的查询结果
+    :return: 处理后的查询结果（只返回第一个匹配的 hit）
     """
     def transform_contact_phone(contact_phone):
         """
@@ -345,9 +340,12 @@ def business_postprocess(response):
             return contact_phone
         else:  # 其他情况（如 None 或其他类型），返回空数组
             return []
+
     hits = response['hits']['hits']
 
-    for hit in hits:  # 遍历所有记录
+    if len(hits) > 0:  # 如果有匹配的 hit
+        hit = hits[0]  # 只处理第一个 hit
+
         # 处理 interests 字段
         if 'interest' in hit['_source']:
             interests = hit['_source']['interest']
@@ -370,4 +368,8 @@ def business_postprocess(response):
             for i, _ in enumerate(hit['_source']['additionalOfferingAddress']):
                 hit['_source']['additionalOfferingAddress'][i] = parse_location(hit['_source']['additionalOfferingAddress'][i])
 
-    return response
+        # 只返回第一个 hit
+        response['hits']['hits'] = [hit]
+        return response
+
+    return response  # 如果没有匹配的 hit，返回原始 response
