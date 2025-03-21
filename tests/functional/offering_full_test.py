@@ -129,7 +129,7 @@ class TestGetOfferingsTextQuery(unittest.TestCase):
 
     def test_keyword_filter(self):
         # 测试关键词筛选正确性
-        # 符合条件的数据条数：5 条，businessID: [9, 13, 21, 105, 115]
+        # 符合条件的数据条数：
         radius = 10
         search = "Basketball"
         response = self.app.get(f"/GetOfferingsTextQuery?zipCode={self.zip_code}&radius={radius}&search={search}")

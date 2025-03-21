@@ -167,6 +167,21 @@ class RequestOfferingSearch(AbstractRequest):
                     # "minimum_should_match": "50%"
                 }
             })
+            # 增加完美匹配
+            query["query"]["bool"]["should"].append({
+                "bool": {
+                    "should": [
+                    {
+                        "term": {
+                        "businessFullName.keyword": {
+                            "value": self.params.search,
+                            "boost": 10
+                        }
+                        }
+                    }
+                    ]
+                }
+                })
         else:
             query["query"]["bool"]["must"].append({
                 "match_all": {}
@@ -271,14 +286,45 @@ class RequestOfferingSearch(AbstractRequest):
                         }
                     })
 
+        # 只筛两种情况：
+        # 1. endDate 在今天之后；
+        # 2. endDate 为null，durationSeason为Summer 2025
         query["query"]["bool"]["filter"].append({
             "nested": {
                 "path": "schedule",
                 "query": {
-                    "range": {
-                        "schedule.endDate": {
-                            "gte": datetime.now().strftime("%Y-%m-%d")
-                        }
+                    "bool": {
+                        "should": [
+                            {
+                                "range": {
+                                    "schedule.endDate": {
+                                        "gt": "now/d"  # 今天的日期
+                                    }
+                                }
+                            },
+                            {
+                                "bool": {
+                                    "must": [
+                                        {
+                                            "script": {
+                                                "script": {
+                                                    "source": "doc['schedule.endDate'].size() == 0",
+                                                    "lang": "painless"
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "term": {
+                                                "schedule.durationSeason": {
+                                                    "value": "Summer 2025"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ],
+                        "minimum_should_match": 1
                     }
                 }
             }
