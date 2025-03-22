@@ -44,23 +44,7 @@ class AbstractRequest(ABC):
 
     def common_query_params(self):
         """返回通用的查询参数"""
-        query = {
-            "size": self.params.page_len * 4,
-            "_source": {
-                "excludes": ["pages", "*Embed*"]
-            },
-            "sort": [
-                { "_score": "desc" },
-                { "businessID": "desc"},
-            ]
-        }
-        # 分页
-        if self.params.page_offset['prePageLastBusinessID'] is not None:
-            query["search_after"] = [
-                self.params.page_offset['prePageLastScore'],
-                self.params.page_offset['prePageLastBusinessID'],
-            ]
-        return query
+        return {}
 
     def execute(self):
         try:
@@ -133,18 +117,77 @@ class RequestBusinessFullName(AbstractRequest):
             "total_hits": len(hits)
         }
 
-
 class RequestOfferingSearch(AbstractRequest):
     def __init__(self, request_args):
         super().__init__(request_args)
         self.distance_weight = 7
         self.google_review_weight = 3
         self.sum_weight = self.distance_weight + self.google_review_weight
+
     def parse_args(self):
         return SearchOfferingParams(self.request_args)
 
     def build_query(self):
+        composite = {
+                        "size": 1000,  # Number of buckets per page
+                        "sources": [
+                            {
+                                "businessID": {
+                                    "terms": {
+                                        "field": "businessID"
+                                    }
+                                }
+                            }
+                        ],
+                    }
+    
+        if self.params.page_offset is not None:
+            composite["after"] = {
+                            "businessID": self.params.page_offset
+                        }
+
+        aggs = {
+                "group_by_businessID": {
+                    "composite": composite,
+                    "aggs": {
+                        "max_score": {
+                            "max": {
+                                "script": "_score"
+                            }
+                        },
+                        "top_hits": {
+                            "top_hits": {
+                                "size": 1,  # Only return the top document per bucket
+                                "sort": [
+                                    {
+                                        "_score": {
+                                            "order": "desc"
+                                        }
+                                    }
+                                ],
+                                "_source": {
+                                    "excludes": "*Emb*"
+                                }
+                            }
+                        },
+                        "bucket_sort": {
+                            "bucket_sort": {
+                                "sort": [
+                                    {
+                                        "max_score": {
+                                            "order": "desc"
+                                        }
+                                    }
+                                ],
+                                "size": self.params.page_len  # Number of buckets to return
+                            }
+                        }
+                    }
+                }
+            }
+       
         query = {
+            "size": 1000,  
             "query": {
                 "bool": {
                     "must": [],
@@ -152,18 +195,10 @@ class RequestOfferingSearch(AbstractRequest):
                     "should": []
                 }
             },
-            **self.common_query_params(),
-              "collapse": {
-                "field": "businessID",
-                "inner_hits": {
-                "name": "most_relevant",
-                "size": 1,
-                "sort": [{ "_score": "desc" }]
-                }
-            }
+            "_source": {"excludes": "*"},
+            "aggs": aggs
         }
 
-        # 添加评分脚本
         query["query"]["bool"]["must"].append({
             "script_score": {
                 "query": {"match_all": {}},
@@ -409,33 +444,52 @@ class RequestOfferingSearch(AbstractRequest):
 
         # 添加搜索条件
         if self.params.search:
-            query["query"]["bool"]["filter"].append({
+            query["query"]["bool"]["must"].append({
                 "bool": {
                     "should": [
+                        # {
+                        #     "multi_match": {
+                        #         "query": self.params.search,
+                        #         "fields": [
+                        #             "activity",
+                        #             "activityCategory",
+                        #             "offeringName",
+                        #             "businessFullName",
+                        #             "offeringInsightSummary"
+                        #         ],
+                        #         "type": "most_fields",
+                        #         "fuzziness": "1",
+                        #         "operator": "or",
+                        #         "boost": 20
+                        #     }
+                        # },
                         {
+                            "semantic": {
+                                "field": "activityEmbeddings",
+                                "query": self.params.search,
+                                "boost": 100
+                            }
+                        }
+                    ],
+                    # "minimum_should_match": 1  # 至少满足一个条件
+                }
+            })
+
+            query["query"]["bool"]["should"].append({
                             "multi_match": {
                                 "query": self.params.search,
                                 "fields": [
-                                    "activity",
-                                    "activityCategory",
+                                    "activity^5",
+                                    "activityCategory^5",
                                     "offeringName",
                                     "businessFullName",
                                     "offeringInsightSummary"
                                 ],
                                 "type": "most_fields",
                                 "fuzziness": "1",
-                                "operator": "or"
+                                "operator": "or",
+                                "boost": 20
                             }
-                        },
-                        {
-                            "semantic": {
-                                "field": "activityEmbeddings",
-                                "query": self.params.search
-                            }
-                        }
-                    ],
-                    "minimum_should_match": 1  # 至少满足一个条件
-                }
             })
         return query
 
@@ -444,67 +498,51 @@ class RequestOfferingSearch(AbstractRequest):
 
     def postprocess(self, response):
         def offering_postprocess(response):
-            """
-            处理 Elasticsearch 查询结果中的字段转换。
-            
-            :param response: Elasticsearch 查询结果
-            :return: 处理后的查询结果
-            """
-            hits = response['hits']['hits']
+            hits = response['aggregations']['group_by_businessID']['buckets']
+            processed_hits = []
 
-            for hit in hits:  # 遍历所有记录
-                # 处理 location 字段
-                if 'location' in hit['_source']:
-                    hit['_source']['location'] = parse_location(hit['_source']['location'])
-                if 'locationType' in hit['_source'] and hit['_source']['locationType'] == 'online':
-                    # 临时处理
-                    hit['_source']['locationDisplayName'] = ''
+            for bucket in hits:
+                top_hit = bucket['top_hits']['hits']['hits'][0]
+                source = top_hit['_source']
 
-                if 'teyaScore' not in hit['_source']:
-                    hit['_source']['teyaScore'] = min(hit['_score'], 5)
+                # Process location and other fields as needed
+                if 'location' in source:
+                    source['location'] = parse_location(source['location'])
+                if 'locationType' in source and source['locationType'] == 'online':
+                    source['locationDisplayName'] = ''
 
-                if 'distance' not in hit['_source']:
-                    hit['_source']['distance'] =  calculate_distance(self.params.lat, self.params.lon, hit['_source']['location']['lat'], hit['_source']['location']['lon'])
-                    
+                if 'teyaScore' not in source:
+                    source['teyaScore'] = min(top_hit['_score'] / 100 * 5, 5)
+
+                if 'distance' not in source and self.params.lat and self.params.lon:
+                    source['distance'] = calculate_distance(self.params.lat, self.params.lon, source['location']['lat'], source['location']['lon'])
+
+                processed_hits.append(source)
+
             return response
+
         return offering_postprocess(response)
 
     def merge_result(self, response):
-
-        seen = set()
-        hits = []
-
-        # 默认是最后一个
-        last_idx = len(response['hits']['hits']) - 1
-        # 自己做商家的collapse
-        for idx, hit in enumerate(response['hits']['hits']):
-            business_id = hit['_source']['businessID']
-            # 去除相同商户
-            # if self.params.page_offset['prePageLastBusinessID'] is not None:
-            #     if business_id == self.params.page_offset['prePageLastBusinessID']:
-            #         continue
-            if business_id not in seen:
-                seen.add(business_id)
-                hits.append(hit['_source'])
-            # 一直到页面最后一个商家的最后一个offering，下一页是新的商家
-            if len(seen) == self.params.page_len:
-                last_idx = idx
-            print(idx, business_id, hit['_score'])
-
-        hits = hits[:min(len(hits), self.params.page_len)]
+        hits = response['aggregations']['group_by_businessID']['buckets']
+        processed_hits = []
+        for bucket in hits:
+            top_hit = bucket['top_hits']['hits']['hits'][0]
+            source = top_hit['_source']
+            processed_hits.append(source)
         results = {
-            "data": hits,
-            "total_hits": len(hits),
+            "data": processed_hits,
+            "total_hits": len(processed_hits),
         }
 
-        if last_idx >= 0:
-            last_hit = response['hits']['hits'][last_idx]
+        if processed_hits:
+            last_bucket = response['aggregations']['group_by_businessID']['buckets'][-1]
             results["page_offset"] = {
-                "prePageLastScore":  last_hit['sort'][0],
-                "prePageLastBusinessID": last_hit['sort'][1],
+                "prePageLastBusinessID": last_bucket['key']['businessID'],
             }
+
         return results
-    
+
 
 
 def business_postprocess(response):
