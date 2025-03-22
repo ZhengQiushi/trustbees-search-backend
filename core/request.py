@@ -447,22 +447,22 @@ class RequestOfferingSearch(AbstractRequest):
             query["query"]["bool"]["must"].append({
                 "bool": {
                     "should": [
-                        # {
-                        #     "multi_match": {
-                        #         "query": self.params.search,
-                        #         "fields": [
-                        #             "activity",
-                        #             "activityCategory",
-                        #             "offeringName",
-                        #             "businessFullName",
-                        #             "offeringInsightSummary"
-                        #         ],
-                        #         "type": "most_fields",
-                        #         "fuzziness": "1",
-                        #         "operator": "or",
-                        #         "boost": 20
-                        #     }
-                        # },
+                        {
+                            "multi_match": {
+                                "query": self.params.search,
+                                "fields": [
+                                    "activity",
+                                    "activityCategory",
+                                    "offeringName",
+                                    "businessFullName",
+                                    "offeringInsightSummary"
+                                ],
+                                "type": "most_fields",
+                                "fuzziness": "1",
+                                "operator": "or",
+                                "boost": 0
+                            }
+                        },
                         {
                             "semantic": {
                                 "field": "activityEmbeddings",
@@ -475,22 +475,6 @@ class RequestOfferingSearch(AbstractRequest):
                 }
             })
 
-            query["query"]["bool"]["should"].append({
-                            "multi_match": {
-                                "query": self.params.search,
-                                "fields": [
-                                    "activity^5",
-                                    "activityCategory^5",
-                                    "offeringName",
-                                    "businessFullName",
-                                    "offeringInsightSummary"
-                                ],
-                                "type": "most_fields",
-                                "fuzziness": "1",
-                                "operator": "or",
-                                "boost": 20
-                            }
-            })
         return query
 
     def request_query(self, query):
