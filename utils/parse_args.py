@@ -7,7 +7,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 class BaseSearchParams:
     def __init__(self, request_args):
         # 提取 page_offset 和 page_len，并确保它们是数字
-        self.page_offset = self._ensure_number(request_args.get("pageOffset", 0), "pageOffset")
+        self.page_offset = {
+            "prePageLastScore": self._ensure_number(request_args.get("prePageLastScore", 0), "prePageLastScore"),
+            "prePageLastBusinessID": request_args.get("prePageLastBusinessID", None)
+         }
+
+        # self.page_offset = self._ensure_number(request_args.get("pageOffset", 0), "pageOffset")
+
         self.page_len = self._ensure_number(request_args.get("pageLen", 15), "pageLen")
 
     @staticmethod

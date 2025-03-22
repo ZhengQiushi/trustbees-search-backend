@@ -44,13 +44,23 @@ class AbstractRequest(ABC):
 
     def common_query_params(self):
         """返回通用的查询参数"""
-        return {
-            "from": self.params.page_offset * self.params.page_len,
-            "size": self.params.page_len,
+        query = {
+            "size": self.params.page_len * 4,
             "_source": {
-                "excludes": ["pages", "*Embeddings"]
-            }
+                "excludes": ["pages", "*Embed*"]
+            },
+            "sort": [
+                { "_score": "desc" },
+                { "businessID": "desc"},
+            ]
         }
+        # 分页
+        if self.params.page_offset['prePageLastBusinessID'] is not None:
+            query["search_after"] = [
+                self.params.page_offset['prePageLastScore'],
+                self.params.page_offset['prePageLastBusinessID'],
+            ]
+        return query
 
     def execute(self):
         try:
@@ -143,14 +153,12 @@ class RequestOfferingSearch(AbstractRequest):
                 }
             },
             **self.common_query_params(),
-            "collapse": {
-                "field": "businessID"
-            },
-            "aggs": {
-                "unique_business_count": {
-                    "cardinality": {
-                        "field": "businessID"
-                    }
+              "collapse": {
+                "field": "businessID",
+                "inner_hits": {
+                "name": "most_relevant",
+                "size": 1,
+                "sort": [{ "_score": "desc" }]
                 }
             }
         }
@@ -230,23 +238,7 @@ class RequestOfferingSearch(AbstractRequest):
                 }
             })
 
-        # 添加搜索条件
         if self.params.search:
-            query["query"]["bool"]["filter"].append({
-                "multi_match": {
-                    "query": self.params.search,
-                    "fields": [
-                        "activity",
-                        "activityCategory",
-                        "offeringName",
-                        "businessFullName",
-                        "offeringInsightSummary"
-                    ],
-                    "type": "most_fields",
-                    "fuzziness": "1",
-                    "operator": "or"
-                }
-            })
             # 增加完美匹配
             query["query"]["bool"]["should"].append({
                 "bool": {
@@ -255,7 +247,7 @@ class RequestOfferingSearch(AbstractRequest):
                             "term": {
                                 "businessFullName.keyword": {
                                     "value": self.params.search,
-                                    "boost": 10
+                                    "boost": 100
                                 }
                             }
                         }
@@ -414,6 +406,37 @@ class RequestOfferingSearch(AbstractRequest):
             }
         })
 
+
+        # 添加搜索条件
+        if self.params.search:
+            query["query"]["bool"]["filter"].append({
+                "bool": {
+                    "should": [
+                        {
+                            "multi_match": {
+                                "query": self.params.search,
+                                "fields": [
+                                    "activity",
+                                    "activityCategory",
+                                    "offeringName",
+                                    "businessFullName",
+                                    "offeringInsightSummary"
+                                ],
+                                "type": "most_fields",
+                                "fuzziness": "1",
+                                "operator": "or"
+                            }
+                        },
+                        {
+                            "semantic": {
+                                "field": "activityEmbeddings",
+                                "query": self.params.search
+                            }
+                        }
+                    ],
+                    "minimum_should_match": 1  # 至少满足一个条件
+                }
+            })
         return query
 
     def request_query(self, query):
@@ -438,7 +461,7 @@ class RequestOfferingSearch(AbstractRequest):
                     hit['_source']['locationDisplayName'] = ''
 
                 if 'teyaScore' not in hit['_source']:
-                    hit['_source']['teyaScore'] = hit['_score']
+                    hit['_source']['teyaScore'] = min(hit['_score'], 5)
 
                 if 'distance' not in hit['_source']:
                     hit['_source']['distance'] =  calculate_distance(self.params.lat, self.params.lon, hit['_source']['location']['lat'], hit['_source']['location']['lon'])
@@ -447,12 +470,40 @@ class RequestOfferingSearch(AbstractRequest):
         return offering_postprocess(response)
 
     def merge_result(self, response):
-        hits = [hit['_source'] for hit in response['hits']['hits']]
-        unique_business_count = response['aggregations']['unique_business_count']['value']
-        return {
+
+        seen = set()
+        hits = []
+
+        # 默认是最后一个
+        last_idx = len(response['hits']['hits']) - 1
+        # 自己做商家的collapse
+        for idx, hit in enumerate(response['hits']['hits']):
+            business_id = hit['_source']['businessID']
+            # 去除相同商户
+            # if self.params.page_offset['prePageLastBusinessID'] is not None:
+            #     if business_id == self.params.page_offset['prePageLastBusinessID']:
+            #         continue
+            if business_id not in seen:
+                seen.add(business_id)
+                hits.append(hit['_source'])
+            # 一直到页面最后一个商家的最后一个offering，下一页是新的商家
+            if len(seen) == self.params.page_len:
+                last_idx = idx
+            print(idx, business_id, hit['_score'])
+
+        hits = hits[:min(len(hits), self.params.page_len)]
+        results = {
             "data": hits,
-            "total_hits": unique_business_count
+            "total_hits": len(hits),
         }
+
+        if last_idx >= 0:
+            last_hit = response['hits']['hits'][last_idx]
+            results["page_offset"] = {
+                "prePageLastScore":  last_hit['sort'][0],
+                "prePageLastBusinessID": last_hit['sort'][1],
+            }
+        return results
     
 
 
