@@ -141,10 +141,10 @@ class RequestOfferingSearch(AbstractRequest):
                         ],
                     }
     
-        if self.params.page_offset is not None:
-            composite["after"] = {
-                            "businessID": self.params.page_offset
-                        }
+        # if self.params.page_offset is not None:
+        #     composite["after"] = {
+        #                     "businessID": self.params.page_offset
+        #                 }
 
         aggs = {
                 "group_by_businessID": {
@@ -179,7 +179,7 @@ class RequestOfferingSearch(AbstractRequest):
                                         }
                                     }
                                 ],
-                                "size": self.params.page_len  # Number of buckets to return
+                                "size": 50  # Number of buckets to return
                             }
                         }
                     }
@@ -510,20 +510,27 @@ class RequestOfferingSearch(AbstractRequest):
     def merge_result(self, response):
         hits = response['aggregations']['group_by_businessID']['buckets']
         processed_hits = []
-        for bucket in hits:
+        
+        offset = self.params.page_len * self.params.page_offset
+        for idx, bucket in enumerate(hits):
+            if idx < offset:
+                continue
             top_hit = bucket['top_hits']['hits']['hits'][0]
             source = top_hit['_source']
             processed_hits.append(source)
+            if len(processed_hits) >= self.params.page_len:
+                break
+
         results = {
             "data": processed_hits,
-            "total_hits": len(processed_hits),
+            "total_hits": len(hits),
         }
 
-        if processed_hits:
-            last_bucket = response['aggregations']['group_by_businessID']['buckets'][-1]
-            results["page_offset"] = {
-                "prePageLastBusinessID": last_bucket['key']['businessID'],
-            }
+        # if processed_hits:
+        #     last_bucket = response['aggregations']['group_by_businessID']['buckets'][-1]
+        #     results["page_offset"] = {
+        #         "prePageLastBusinessID": last_bucket['key']['businessID'],
+        #     }
 
         return results
 
