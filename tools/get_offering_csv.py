@@ -6,12 +6,16 @@ import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import config
 
-name = "provider_dev"
+import global_vars
+
+global_vars.init_globals("/Users/lion/Project/trustbees-search-backend/config_prod.env")
+
+name = "provider_prod"
 
 # 初始化 Elasticsearch 客户端
 client = Elasticsearch(
-    config.ELASTICSEARCH_URL,
-    api_key=config.ELASTICSEARCH_API_KEY
+    global_vars.config['ES_HOST'],
+    api_key=global_vars.config['ES_API_KEY']
 )
 
 # 获取索引的映射

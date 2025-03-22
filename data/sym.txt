@@ -1,0 +1,729 @@
+
+
+PUT /offering_dev_v3
+{
+  "settings": {
+  "analysis": {
+    "filter": {
+      "my_synonyms": {
+        "type": "synonym",
+        "synonyms": [
+
+"3D, three-dimensional, 3-dimensional, stereoscopic",
+"3D Printing, additive manufacturing, rapid prototyping, 3D fabrication",
+"ACT Prep, ACT preparation, ACT study, ACT test prep",
+"Academic, scholarly, educational, intellectual",
+"Acro, acrobatics, tumbling, gymnastics",
+"Acro Dance, acrobatic dance, gymnastic dance, tumbling dance",
+"Acrobatic, gymnastic, athletic, agile",
+"Acrobatics, tumbling, gymnastics, acro",
+"Acting, performance, drama, theatrical arts",
+"Adventure, exploration, expedition, quest",
+"Aerobics, cardio, aerobic exercise, fitness training",
+"African Dance, traditional African dance, tribal dance, Afro-dance",
+"Agility, nimbleness, dexterity, quickness",
+"Aikido, martial arts, self-defense, Japanese martial art",
+"Alcohol Markers, alcohol-based markers, art markers, illustration markers",
+"Algebra, mathematics, math, algebraic equations",
+"Alpine Skiing, downhill skiing, mountain skiing, ski racing",
+"Anatomy, human body, physiology, biological structure",
+"Animal Rescue, wildlife rescue, animal rehabilitation, animal shelter",
+"Animation, cartooning, animated film, motion graphics",
+"Animation Production, animated film production, cartoon production, motion graphics creation",
+"Anime, Japanese animation, manga animation, anime series",
+"Anthropology, human studies, cultural anthropology, social science",
+"Aquatics, water sports, swimming, aquatic activities",
+"Aquatics Program, swimming program, water sports program, aquatic training",
+"Archery, bow shooting, target archery, bow and arrow",
+"Architecture, building design, architectural design, structural engineering",
+"Art, artwork, creative expression, visual arts",
+"Art & Design, creative arts, visual design, artistic design",
+"Art Fusion, mixed media art, art blending, creative fusion",
+"Art History, art study, art chronology, artistic heritage",
+"Art for Charity, charitable art, art fundraising, benefit art",
+"Artificial Intelligence, AI, machine learning, intelligent systems",
+"Arts, creative arts, fine arts, visual arts",
+"Arts & Crafts, handicrafts, DIY projects, creative crafts",
+"Arts Technology, digital arts, creative technology, art tech",
+"Arts and Crafts, handicrafts, DIY projects, creative crafts",
+"Arts/Nature, nature art, environmental art, natural creativity",
+"Athletics, sports, physical education, athletic training",
+"Augmented Reality (AR), AR, virtual enhancement, mixed reality",
+"Aviation, aeronautics, flying, aircraft piloting",
+"Bachata, Latin dance, Dominican dance, bachata music",
+"Backyard Games, outdoor games, lawn games, garden games",
+"Badminton, shuttlecock, racket sport, badminton game",
+"Baking, pastry making, cooking, cake decorating",
+"Ballet, classical dance, ballet performance, dance theater",
+"Ballgames, sports, team games, ball sports",
+"Banksy, street artist, graffiti artist, anonymous artist",
+"Barre, barre workout, ballet fitness, barre exercise",
+"Baseball, ball game, MLB, baseball sport",
+"Basic Crafting Techniques, DIY basics, crafting fundamentals, handmade skills",
+"Basketball, hoops, NBA, basketball game",
+"Bassoon, woodwind instrument, double reed, orchestral instrument",
+"Batik, fabric dyeing, wax-resist dyeing, textile art",
+"Beach Activities, seaside fun, coastal recreation, beach sports",
+"Beading, beadwork, jewelry making, bead crafting",
+"Beadwork, beading, bead art, bead crafting",
+"Biking, cycling, bicycle riding, bike touring",
+"Billiards, pool, cue sports, billiard games",
+"Boating, sailing, yachting, watercraft",
+"Boot Camp, fitness camp, training camp, military-style workout",
+"Bowling, tenpin bowling, bowling game, lane bowling",
+"Boxing, pugilism, boxing sport, ring fighting",
+"Brass, brass instruments, brass section, wind instruments",
+"Brazilian Jiu-Jitsu, BJJ, grappling, martial arts",
+"Breakdancing, b-boying, street dance, hip-hop dance",
+"Budgeting, financial planning, money management, expense tracking",
+"Business, commerce, trade, enterprise",
+"Business & Math Classes, business math, financial math, commercial math",
+"Calligraphy, hand lettering, beautiful writing, script art",
+"Camp, summer camp, outdoor camp, camping trip",
+"Camping, outdoor camping, tenting, wilderness camping",
+"Candle Making, candle crafting, wax art, candle DIY",
+"Canoeing, paddling, kayaking, canoe sports",
+"Cardio, cardiovascular exercise, aerobic workout, heart training",
+"Career Planning, career development, job planning, professional growth",
+"Cartoon, animation, comic strip, animated show",
+"Cartooning, comic art, animation drawing, cartoon creation",
+"Cello, string instrument, violoncello, orchestral cello",
+"Ceramics, pottery, clay art, ceramic crafting",
+"Chamber Music, ensemble music, small group performance, classical ensemble",
+"Cheer, cheerleading, pep squad, spirit team",
+"Cheerleading, cheer, pep squad, spirit team",
+"Chemistry, chemical science, molecular study, chem",
+"Chess, board game, strategic game, chess match",
+"Chinese, Mandarin, Chinese language, Chinese culture",
+"Chinese Calligraphy, Chinese writing, brush calligraphy, traditional calligraphy",
+"Choreography, dance composition, movement design, dance arrangement",
+"Circus Arts, circus performance, acrobatics, juggling",
+"Cityscape, urban landscape, city view, metropolitan scene",
+"Clarinet, woodwind instrument, single reed, orchestral clarinet",
+"Clay, modeling clay, pottery clay, sculpting material",
+"Clay Handbuilding, hand sculpting, clay modeling, pottery crafting",
+"Clay Modeling, clay sculpting, pottery modeling, handbuilding",
+"Climbing, rock climbing, mountaineering, bouldering",
+"Coding, programming, software development, computer coding",
+"Cognitive behavior, cognitive therapy, mental behavior, cognitive psychology",
+"Collage, mixed media, paper art, cut-and-paste art",
+"Collage Art, mixed media art, paper collage, cut-and-paste artwork",
+"College Counseling, university advising, academic counseling, college guidance",
+"Comic & Manga, comic books, graphic novels, Japanese comics",
+"Comic Book, graphic novel, comic strip, illustrated story",
+"Comic Book Illustration, comic art, graphic storytelling, comic drawing",
+"Comics, comic strips, graphic novels, illustrated stories",
+"Communication, interaction, dialogue, information exchange",
+"Communication Skills, interpersonal skills, dialogue skills, conversational ability",
+"Community, society, neighborhood, local group",
+"Composition, writing, essay, musical composition",
+"Computer Science, computing, software engineering, computer studies",
+"Computer and executive functioning skills, tech skills, computer proficiency, digital literacy",
+"Conflict Resolution, dispute resolution, problem-solving, mediation",
+"Contemporary, modern, current, present-day",
+"Contemporary Ballet, modern ballet, neoclassical ballet, contemporary dance",
+"Contemporary Dance, modern dance, expressive dance, current dance styles",
+"Cooking, culinary arts, food preparation, kitchen skills",
+"Cooperative Games, team games, collaborative play, group activities",
+"Cosplay, costume play, role-playing, fan costumes",
+"Creative Arts, artistic expression, creative design, visual arts",
+"Creative Writing, writing, storytelling, literary creation",
+"Cricket, bat and ball game, cricket sport, cricket match",
+"Crochet, yarn crafting, crochet work, needlework",
+"Cross Country, long-distance running, cross-country running, trail running",
+"Cross Training, mixed training, varied workouts, cross-fit",
+"CrossFit, high-intensity training, cross-training, fitness program",
+"Curling, ice curling, winter sport, curling game",
+"Cybersecurity, information security, cyber protection, digital security",
+"Cycling, biking, bicycle riding, bike touring",
+"DJ, disc jockey, music mixing, turntablism",
+"Daily/independent living skills, life skills, self-care skills, daily functioning",
+"Dance, dancing, movement, choreography",
+"Dance and Body Movement, expressive movement, dance choreography, body expression",
+"Data Analysis, data interpretation, statistical analysis, data processing",
+"Debate, argumentation, discussion, public speaking",
+"Decorations, ornaments, embellishments, festive decor",
+"Design, planning, layout, creative design",
+"Development of employment readiness skills, job readiness, career preparation, employment skills",
+"Digital Art, digital illustration, computer art, digital design",
+"Digital Character Design, character illustration, digital avatar, character creation",
+"Digital Content Creators, content creators, digital influencers, online creators",
+"Digital Design, graphic design, digital layout, computer-aided design",
+"Digital Grafitti, digital street art, virtual graffiti, online spray art",
+"Digital Illustration, digital drawing, computer illustration, graphic art",
+"Digital Manga, online manga, digital comics, web manga",
+"Digital Marketing, online marketing, internet advertising, digital promotion",
+"Digital Painting, computer painting, digital art, graphic painting",
+"Digital Sculpture, 3D modeling, digital modeling, virtual sculpture",
+"Disability Support Services, accessibility services, disability aid, support programs",
+"Diving, scuba diving, underwater exploration, deep-sea diving",
+"Dodge Ball, dodgeball, ball game, team dodgeball",
+"Dodgeball, dodge ball, ball game, team dodgeball",
+"Double Bass, string bass, upright bass, bass violin",
+"Drama, theater, acting, theatrical performance",
+"Dramatics, theatrical arts, drama performance, stage acting",
+"Drawing, sketching, illustration, pencil art",
+"ESL, English as a Second Language, English learning, language instruction",
+"Earth Science, geoscience, environmental science, geology",
+"Economic Principles, economics, financial theory, economic theory",
+"Elliptical, elliptical trainer, cross-trainer, fitness machine",
+"Embroidery, needlework, stitching, textile art",
+"Engineering, technical design, structural engineering, mechanical engineering",
+"English, language arts, English literature, language studies",
+"Entrepreneurship, business creation, startup development, entrepreneurial skills",
+"Entrepreneurship & Small Business Finance, small business management, startup finance, entrepreneurial finance",
+"Environmental Science, ecology, environmental studies, earth science",
+"Equestrian Sports, horse riding, equestrianism, horseback sports",
+"Esports, electronic sports, competitive gaming, video game competitions",
+"Farming, agriculture, cultivation, agribusiness",
+"Fashion, clothing design, style, apparel",
+"Fencing, sword fighting, foil fencing, epee fencing",
+"Fiber Arts, textile arts, fabric crafts, fiber crafting",
+"Field Games, outdoor games, lawn games, sports activities",
+"Field Hockey, hockey, stick game, team sport",
+"Film, movie, cinema, motion picture",
+"Filmmaking, film production, movie making, cinematic arts",
+"Financial Fraud & Scams Awareness, fraud prevention, scam awareness, financial security",
+"Financial Literacy, money management, financial education, economic literacy",
+"Financial literacy, money skills, financial knowledge, economic understanding",
+"Fishing, angling, fly fishing, sport fishing",
+"Fitness, physical fitness, exercise, workout",
+"Flag Football, touch football, non-contact football, recreational football",
+"Floor Hockey, indoor hockey, street hockey, hockey game",
+"Floor/Street Hockey, floor hockey, street hockey, indoor hockey",
+"Floral Design, flower arranging, floral art, bouquet making",
+"Flute, woodwind instrument, orchestral flute, piccolo",
+"Football, soccer, American football, gridiron, fustal",
+"French Horn, horn, brass instrument, orchestral horn",
+"Frisbee, flying disc, disc sport, frisbee game",
+"Frisbee Golf, disc golf, frisbee sport, disc sport",
+"Functional Strength Training, strength conditioning, fitness training, muscle building",
+"Gaga, gaga ball, dodgeball variant, playground game",
+"Galaxies, star systems, cosmic structures, astronomical galaxies",
+"Game Design, game development, video game design, interactive design",
+"Games, play, recreation, game activities",
+"Gardening, horticulture, plant care, landscaping",
+"Geometry, geometric math, spatial math, shape study",
+"Glass Art, glassblowing, stained glass, glass crafting",
+"Golf, golfing, golf sport, links game",
+"Graham, Graham technique, modern dance, Martha Graham",
+"Graham Technique, modern dance, Martha Graham technique, contemporary dance",
+"Graphic Design, visual design, digital design, graphic arts",
+"Grooming, personal care, hygiene, appearance maintenance",
+"Guitar, string instrument, acoustic guitar, electric guitar",
+"Gymnastics, tumbling, acrobatics, gymnastic sports",
+"HIIT, high-intensity interval training, interval training, intense workout",
+"Hand Lettering, calligraphy, script writing, hand-drawn typography",
+"Handcrafts, handmade crafts, DIY projects, artisanal crafts",
+"Hapkido, martial arts, self-defense, Korean martial art",
+"High Intensity Interval Training (HIIT), HIIT, interval training, intense workout",
+"Hiking, trekking, trail walking, mountain hiking",
+"Hip Hop, hip-hop music, rap music, urban culture",
+"Hip-Hop, hip hop, rap, urban dance",
+"Hip-hop, hip hop, rap music, urban culture",
+"History, historical study, past events, chronology",
+"Hockey, ice hockey, field hockey, hockey sport",
+"Home Economics, domestic science, household management, home management",
+"Homework Help, academic assistance, study help, tutoring",
+"House, home, residence, dwelling",
+"Humanities, liberal arts, social sciences, cultural studies",
+"IPAD Painting, digital painting, tablet art, iPad art",
+"IPAD Painting: Recreating Masterpieces, digital art reproduction, iPad masterpieces, tablet painting",
+"Ice Hockey, hockey, ice sport, puck game",
+"Illustration, drawing, graphic art, visual representation",
+"Improvisation, spontaneous performance, ad-libbing, extemporization",
+"Installation Art, art installation, environmental art, immersive art",
+"Instrumental Music, music performance, orchestral music, instrumental performance",
+"Interactive Media, digital media, interactive design, multimedia",
+"Investing Basics, investment fundamentals, stock market basics, financial investing",
+"Jazz, jazz music, improvisational music, jazz performance",
+"Jewelry Making, jewelry crafting, beadwork, metalwork",
+"Jiu-Jitsu, Brazilian Jiu-Jitsu, martial arts, self-defense",
+"Judo, martial arts, Japanese wrestling, self-defense",
+"Jujitsu, jiu-jitsu, martial arts, self-defense",
+"Karate, martial arts, self-defense, karate-do",
+"Kawaii Creations, cute art, Japanese kawaii, adorable crafts",
+"Kayaking, canoeing, paddling, water sports",
+"Kendo, Japanese fencing, martial arts, sword fighting",
+"Kettlebell Training, kettlebell workout, strength training, fitness training",
+"Kickball, playground game, ball game, recreational sport",
+"Kickboxing, martial arts, boxing, combat sport",
+"Kindergarten, preschool, early education, nursery school",
+"Knitting, yarn crafting, needlework, knitting art",
+"Krav Maga, self-defense, martial arts, combat training",
+"Kung Fu, martial arts, Chinese boxing, self-defense",
+"Lacrosse, stick game, team sport, lacrosse game",
+"Landscape, scenery, natural view, outdoor setting",
+"Language, linguistics, speech, communication",
+"Law, legal studies, jurisprudence, legal system",
+"Lawn Bowling, lawn sports, bowling, outdoor games",
+"Lawn Bowls, lawn bowling, outdoor bowling, lawn sports",
+"Leadership, management, guidance, direction",
+"Leadership Training, leadership development, management training, executive coaching",
+"Leatherworking, leather crafting, leather art, leather goods",
+"Lego, building blocks, Lego bricks, construction toys",
+"Legos, Lego, building blocks, construction toys",
+"Life Skills, daily skills, practical skills, essential skills",
+"Light Art, light installation, illuminated art, light sculpture",
+"Lyrical, lyrical dance, expressive dance, contemporary dance",
+"Lyrical Dance, expressive dance, contemporary dance, lyrical movement",
+"MMA, mixed martial arts, combat sports, ultimate fighting",
+"Magic Performance, magic tricks, illusion, magic show",
+"Manga, Japanese comics, graphic novels, anime",
+"Martial Arts, combat sports, self-defense, fighting techniques",
+"Math, mathematics, arithmetic, math studies",
+"Maths, mathematics, math, arithmetic",
+"Meditation, mindfulness, relaxation, contemplative practice",
+"Merengue, Latin dance, Dominican dance, merengue music",
+"Metalworking, metal crafting, metal art, metal fabrication",
+"Mind & Body, wellness, holistic health, mind-body connection",
+"Minecraft, block-building game, sandbox game, virtual construction",
+"Mixed Cardio, varied cardio, diverse cardio, mixed aerobic",
+"Mixed Media, multimedia, mixed art, combined media",
+"Mixed Media Art, multimedia art, combined art, mixed techniques",
+"Model United Nations (MUN), MUN, UN simulation, debate club",
+"Modern, contemporary, current, present-day",
+"Modern Dance, contemporary dance, expressive dance, current dance styles",
+"Monet, Claude Monet, impressionist art, Monet paintings",
+"Money Management, financial planning, budgeting, expense control",
+"Mosaic Art, tile art, mosaic design, decorative art",
+"Motion Graphics, animated graphics, moving images, digital animation",
+"Mountain Biking, off-road biking, trail biking, cycling sport",
+"Muay Thai, Thai boxing, martial arts, kickboxing",
+"Muay Thai kickboxing, Thai boxing, martial arts, combat sport",
+"Multi Sports, multiple sports, varied sports, diverse athletics",
+"Multi-Sports, multi sports, varied sports, diverse athletics",
+"Music, musical arts, sound, musical performance",
+"Music Performance, musical performance, live music, concert",
+"Music Production, music creation, sound production, audio engineering",
+"Music Theory, music study, musical theory, sound theory",
+"Musical Theater, musical theatre, stage musical, performance arts",
+"Musical Theater Dance, musical dance, stage dance, performance dance",
+"Nature, environment, outdoors, natural world",
+"Nature Exploration, outdoor exploration, nature discovery, environmental study",
+"Nature Hikes, hiking, trail walking, outdoor trekking",
+"Nature Preserves, wildlife reserves, natural parks, conservation areas",
+"Ninja, martial artist, stealth warrior, ninjutsu",
+"Ninjia, ninja, martial artist, stealth warrior",
+"Nok-Hockey, table hockey, mini hockey, board game",
+"Nutrition, dietetics, food science, healthy eating",
+"Oboe, woodwind instrument, double reed, orchestral oboe",
+"Occupational Therapy, rehabilitation, therapy, occupational health",
+"Olympic Lifting, weightlifting, Olympic weightlifting, strength training",
+"Opera, musical drama, operatic performance, classical opera",
+"Orchestra, symphonic ensemble, musical group, orchestral performance",
+"Organ, pipe organ, keyboard instrument, church organ",
+"Origami, paper folding, Japanese art, paper crafts",
+"Outdoor Physical Activities, outdoor sports, nature activities, physical recreation",
+"Outdoor Walk, nature walk, hiking, trail walking",
+"Paddlesports, canoeing, kayaking, paddleboarding",
+"Paintball, paintball game, shooting sport, team paintball",
+"Painting, art, canvas painting, oil painting",
+"Paper Crafts, paper art, origami, paper folding",
+"Parachuting, skydiving, parachute jumping, aerial descent",
+"Parkour, free running, urban gymnastics, obstacle course",
+"Pen & Ink, ink drawing, pen art, ink illustration",
+"Percussion, drumming, rhythmic instruments, percussion instruments",
+"Performing Art, performance art, live art, theatrical performance",
+"Personal Finance Management, money management, budgeting, financial planning",
+"Perspective, viewpoint, outlook, perception",
+"Phonics, phonetic reading, sound-based learning, language sounds",
+"Photography, photo art, picture taking, photographic art",
+"Physical Activities, exercise, sports, physical fitness",
+"Physics, physical science, mechanics, physics study",
+"Piano, keyboard instrument, grand piano, musical keyboard",
+"Picasso, Pablo Picasso, cubist art, Picasso paintings",
+"Pickleball, paddle sport, racket game, pickleball game",
+"Pilates, core training, Pilates exercise, body conditioning",
+"Pixart, pixel art, digital art, pixel design",
+"Poetry, verse, poetic writing, lyrical expression",
+"Pointe, ballet pointe, toe dancing, ballet technique",
+"Pop Art Creation, pop art, modern art, popular culture art",
+"Portfolio Prep, portfolio preparation, art portfolio, design portfolio",
+"Portfolio Preparation, portfolio prep, art portfolio, design portfolio",
+"Portrait, portrait art, portrait painting, portrait drawing",
+"Portrait Drawing, portrait art, face drawing, portrait sketching",
+"Post Impressionism, post-impressionist art, modern art, artistic movement",
+"Pottery, ceramics, clay art, pottery making",
+"PreSchool, kindergarten, early education, nursery school",
+"Pretend Play, imaginative play, role-playing, make-believe",
+"Printmaking, print art, etching, lithography",
+"Programming, coding, software development, computer programming",
+"Project Management, project planning, task management, project coordination",
+"Psychology, mental health, behavioral science, psychological study",
+"Public Speaking, oratory, speechmaking, presentation skills",
+"Puppetry, puppet show, marionette, puppet theater",
+"Quantum Computing, quantum technology, advanced computing, quantum physics",
+"Reading, literacy, book reading, literature",
+"Real-world reading and writing, practical literacy, everyday reading, functional writing",
+"Robotics, robot engineering, automation, robotic technology",
+"Rock Climbing, climbing, bouldering, mountaineering",
+"Ropes Course, obstacle course, adventure course, team-building course",
+"Rower, rowing, crew, sculling",
+"Rugby, rugby football, contact sport, team sport",
+"Running, jogging, sprinting, marathon",
+"Russian, Russian language, Russian culture, Slavic studies",
+"SAT Prep, SAT preparation, SAT study, SAT test prep",
+"STEAM, science technology engineering arts math, interdisciplinary education, STEAM education",
+"STEM, science technology engineering math, STEM education, technical studies",
+"Sailing, yachting, boating, nautical sports",
+"Salsa, Latin dance, salsa music, salsa dancing",
+"Sand Art, sand sculpture, sand painting, beach art",
+"Saxophone, woodwind instrument, jazz sax, orchestral sax",
+"Science, scientific study, natural science, science research",
+"Science Museums, science centers, educational museums, science exhibits",
+"Screen Printing, silk screening, printmaking, screen art",
+"Scuba Diving, underwater diving, deep-sea diving, scuba exploration",
+"Sculpture, 3D art, carving, sculpting",
+"Sea Animals, marine life, ocean creatures, aquatic animals",
+"Self Portrait, self-representation, self-image, self-depiction",
+"Self-Defense, self-protection, martial arts, personal safety",
+"Self-defense, self-protection, martial arts, personal safety",
+"Sewing, stitching, needlework, fabric crafting",
+"Shoes/Shirt Drawing, footwear design, apparel illustration, clothing art",
+"Singing, vocal performance, singing voice, vocal music",
+"Skateboarding, skateboard sport, skate culture, board sports",
+"Skating, ice skating, roller skating, skate sports",
+"Skydiving, parachuting, freefall, aerial sports",
+"Snowboarding, snow sport, winter boarding, snowboarding sport",
+"Soap Making, soap crafting, soap DIY, handmade soap",
+"Soccer, football, soccer sport, football game",
+"Social Etiquette, manners, social behavior, polite conduct",
+"Social Media, online platforms, social networks, digital media",
+"Social Media Marketing, online marketing, social media promotion, digital advertising",
+"Social and Leadership, social skills, leadership development, interpersonal leadership",
+"Softball, baseball variant, softball sport, team sport",
+"Songwriting, music composition, lyric writing, song creation",
+"Sound Design, audio design, sound engineering, audio production",
+"Space & Astronomy, space science, astronomical study, space exploration",
+"Spanish, Spanish language, Hispanic culture, Spanish studies",
+"Spanish Immersion, Spanish language immersion, bilingual education, Spanish learning",
+"Special Needs Support, disability support, special education, inclusive services",
+"Speech, public speaking, oratory, verbal communication",
+"Speed, velocity, quickness, rapidity",
+"Spin, spinning, indoor cycling, spin class",
+"Sports, athletics, physical activities, games",
+"Sports Psychology, athletic psychology, mental training, sports mental health",
+"Sports,Arts,Science,Nature, interdisciplinary studies, combined fields, diverse subjects",
+"Sprints, short-distance running, sprint racing, fast running",
+"Squash, racket sport, squash game, indoor sport",
+"Stagecraft, theatrical production, stage design, theater tech",
+"Stained Glass, glass art, colored glass, decorative glass",
+"Standardized Test Prep, test preparation, exam prep, standardized testing",
+"Still Life, still life art, still life painting, still life drawing",
+"Storytelling, narrative, tale-telling, story creation",
+"Street Art, urban art, graffiti, public art",
+"Street Art Painting, urban painting, graffiti art, public murals",
+"Strength, power, physical strength, muscle power",
+"Strength Training, weight training, muscle building, resistance training",
+"Stretching, flexibility training, stretching exercises, muscle stretching",
+"Strings, string instruments, orchestral strings, violin family",
+"Study Skills, academic skills, learning techniques, study methods",
+"Supply Chain, logistics, supply management, distribution network",
+"Surfing, wave riding, surf sport, ocean surfing",
+"Surrealism, surreal art, dreamlike art, artistic movement",
+"Swimming, aquatic sports, pool swimming, water activities",
+"T-Ball, tee-ball, baseball for kids, beginner baseball",
+"T-ball, tee-ball, baseball for kids, beginner baseball",
+"TBall, tee-ball, baseball for kids, beginner baseball",
+"TRX Suspension Training, suspension workout, TRX exercise, bodyweight training",
+"Table Tennis, ping pong, table sport, indoor tennis",
+"Tae Kwon Do, taekwondo, martial arts, Korean martial art",
+"Taekwondo, tae kwon do, martial arts, Korean martial art",
+"Tap, tap dance, rhythmic dance, tap dancing",
+"Team Building, team development, group cohesion, team activities",
+"Team Handball, handball, team sport, indoor handball",
+"Team Sports, group sports, team games, collective athletics",
+"Teamwork, collaboration, group effort, cooperative work",
+"Technology, tech, innovation, technical advancement",
+"Technology and Design, tech design, innovation design, technical creativity",
+"Tennis, racket sport, tennis game, lawn tennis",
+"Test Preparation, exam prep, test study, test readiness",
+"Textile Arts, fabric arts, textile design, fiber arts",
+"Textiles Arts, textile arts, fabric crafts, fiber arts",
+"Theater/Drama, theatrical arts, stage performance, drama",
+"Theatre, theater, stage performance, dramatic arts",
+"Tie-dye, fabric dyeing, tie-dye art, colorful dyeing",
+"Toon Town, cartoon city, animated town, comic town",
+"Track & Field, athletics, running events, field events",
+"Track and Field, track & field, athletics, running and jumping",
+"Training, exercise, workout, physical training",
+"Travel, journey, trip, exploration",
+"Trip, journey, travel, excursion",
+"Trombone, brass instrument, slide trombone, orchestral trombone",
+"Trumpet, brass instrument, orchestral trumpet, jazz trumpet",
+"Tuba, brass instrument, bass tuba, orchestral tuba",
+"Tumbling, gymnastics, acrobatics, flips",
+"Tutoring, academic help, private lessons, educational support",
+"UX/UI Design, user experience design, interface design, digital design",
+"Ultimate Frisbee, frisbee sport, team frisbee, disc sport",
+"Upcycling & Repurposing, recycling, creative reuse, sustainable crafting",
+"Van Gogh, Vincent van Gogh, post-impressionist art, Van Gogh paintings",
+"Ventriloquism, voice throwing, puppet performance, ventriloquist act",
+"Video Production, filmmaking, video creation, movie production",
+"Viola, string instrument, orchestral viola, violin family",
+"Violin, string instrument, fiddle, orchestral violin",
+"Virtual Reality (VR), VR, immersive technology, digital reality",
+"Voice, vocal performance, singing, voice training",
+"Volleyball, net sport, team volleyball, beach volleyball",
+"Volunteerism, volunteering, community service, charitable work",
+"Water Activities, aquatic sports, water fun, pool activities",
+"Water Sports, aquatic sports, water activities, marine sports",
+"Watercolor Painting, watercolor art, aquarelle, watercolor illustration",
+"Weaving, textile art, fabric weaving, loom work",
+"Web Design, website design, online design, digital design",
+"Weight Training, strength training, weightlifting, muscle building",
+"Weightlifting, weight training, strength training, powerlifting",
+"West African Dance, African dance, traditional dance, cultural dance",
+"Wiffle Ball, wiffleball, ball game, backyard sport",
+"Winds, wind instruments, woodwinds, brass instruments",
+"Windsurfing, sailboarding, windsurf sport, water sport",
+"Wood Carving, wood art, carving, wood sculpture",
+"Woodblock, woodblock printing, block printing, wood art",
+"Woodwinds, wind instruments, woodwind section, orchestral woodwinds",
+"Woodworking, wood crafting, carpentry, wood art",
+"Wrestling, grappling, wrestling sport, combat sport",
+"Writing, composition, creative writing, literary work",
+"Wynwood, Wynwood art, Miami art district, urban art",
+"Yoga, yoga practice, mindfulness, yoga exercise",
+"Youth Mentoring, youth guidance, teen mentoring, adolescent support",
+"Zip Lining, zipline, canopy tour, aerial adventure",
+"Zipline, zip lining, canopy tour, aerial adventure",
+"Nature Study, environmental study, natural science, ecology"
+          ]
+        },
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "english"
+        },
+        "english_possessive_stemmer": {
+          "type": "stemmer",
+          "language": "possessive_english"
+        }
+      },
+      "analyzer": {
+        "my_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "english_possessive_stemmer",
+            "english_stemmer",
+            "my_synonyms"
+          ]
+        }
+      }
+    }
+  },
+
+  "mappings": {
+    "properties": {
+      "RSVP": {
+        "type": "text"
+      },
+      "RSVPDeadline": {
+        "type": "date"
+      },
+      "activity": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "activityCategory": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "activityEmbeddings": {
+        "type": "semantic_text",
+        "inference_id": "my-inference-endpoint",
+        "model_settings": {
+          "task_type": "text_embedding",
+          "dimensions": 1536,
+          "similarity": "dot_product",
+          "element_type": "float"
+        }
+      },
+      "ageGroup": {
+        "type": "integer_range"
+      },
+      "businessFullName": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "businessID": {
+        "type": "keyword"
+      },
+      "campOptions": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "campSessionOptions": {
+        "type": "keyword"
+      },
+      "earlyDropOff": {
+        "type": "keyword"
+      },
+      "facility": {
+        "type": "keyword"
+      },
+      "googleReview": {
+        "type": "text"
+      },
+      "googleReviewCount": {
+        "type": "integer"
+      },
+      "googleReviewRating": {
+        "type": "float"
+      },
+      "hyperlink": {
+        "type": "keyword"
+      },
+      "latePickup": {
+        "type": "keyword"
+      },
+      "location": {
+        "properties": {
+          "geo_info": {
+            "type": "geo_point"
+          },
+          "name": {
+            "type": "text"
+          },
+          "zipcode": {
+            "type": "keyword"
+          }
+        }
+      },
+      "locationDisplayName": {
+        "type": "keyword"
+      },
+      "locationType": {
+        "type": "keyword"
+      },
+      "lunchIncluded": {
+        "type": "keyword"
+      },
+      "offeringID": {
+        "type": "keyword"
+      },
+      "offeringInsightSummary": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "offeringName": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "offeringType": {
+        "type": "keyword"
+      },
+      "pricing": {
+        "type": "text"
+      },
+      "schedule": {
+        "type": "nested",
+        "properties": {
+          "blackoutDate": {
+            "type": "keyword"
+          },
+          "classDay": {
+            "type": "keyword"
+          },
+          "durationSeason": {
+            "type": "keyword"
+          },
+          "endDate": {
+            "type": "date"
+          },
+          "frequency": {
+            "type": "keyword"
+          },
+          "startDate": {
+            "type": "date"
+          },
+          "time": {
+            "type": "date_range",
+            "format": "HH:mm"
+          }
+        }
+      },
+      "scheduleSummary": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "skillLevel": {
+        "type": "keyword"
+      },
+      "sourceLink": {
+        "type": "keyword"
+      },
+      "transportation": {
+        "type": "keyword"
+      }
+    }
+  }
+}
+
+
+
+  "mappings": {
+    "properties": {
+      "activity": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "activityCategory": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "offeringName": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "businessFullName": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      },
+      "offeringInsightSummary": {
+        "type": "text",
+        "analyzer": "my_analyzer"
+      }
+    }
+  }
+POST /_reindex
+{
+  "source": {
+    "index": "offering_dev"
+  },
+  "dest": {
+    "index": "offering_dev_v2"
+  }
+}
+
+
+GET /offering_test_v2/_search
+{
+  "query": {
+    "match": {
+      "activity": "fustal"
+    }
+  }
+}
+
+
+GET /offering_test/_search
+{
+  "query": {
+    "match": {
+      "activity": "fustal"
+    }
+  }
+}

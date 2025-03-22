@@ -68,7 +68,7 @@ def init_globals(config_file):
     
     # 配置日志输出
     log_dir = config.get("ES_LOGGER_LEVEL")
-    log_file = os.path.join(log_dir, config.get("ES_LOGGER_PATH"))
+    log_file = config.get("ES_LOGGER_PATH")
 
     logging.basicConfig(
         level=config.get("ES_LOGGER_LEVEL"),

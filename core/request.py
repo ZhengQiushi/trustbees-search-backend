@@ -129,7 +129,8 @@ class RequestOfferingSearch(AbstractRequest):
         super().__init__(request_args)
         self.distance_weight = 7
         self.google_review_weight = 3
-        self.sum_weight = self.distance_weight + self.google_review_weight
+        self.sum_weight = self.distance_weight
+        #  + self.google_review_weight
     def parse_args(self):
         return SearchOfferingParams(self.request_args)
 
@@ -156,54 +157,54 @@ class RequestOfferingSearch(AbstractRequest):
         }
 
         # 添加评分脚本
-        query["query"]["bool"]["must"].append({
-            "script_score": {
-                "query": {"match_all": {}},
-                "script": {
-                    "source": """
-                        double platformAverageRating = 0;
-                        double threshold = 20.0; // 评论数阈值
+        # query["query"]["bool"]["must"].append({
+        #     "script_score": {
+        #         "query": {"match_all": {}},
+        #         "script": {
+        #             "source": """
+        #                 double platformAverageRating = 0;
+        #                 double threshold = 20.0; // 评论数阈值
 
-                        // 获取店铺评分和评论数
-                        double rating = doc['googleReviewRating'].size() > 0 ? doc['googleReviewRating'].value : 0;
-                        double count = doc['googleReviewCount'].size() > 0 ? doc['googleReviewCount'].value : 0;
+        #                 // 获取店铺评分和评论数
+        #                 double rating = doc['googleReviewRating'].size() > 0 ? doc['googleReviewRating'].value : 0;
+        #                 double count = doc['googleReviewCount'].size() > 0 ? doc['googleReviewCount'].value : 0;
 
-                        // 计算置信度权重
-                        double weight;
-                        if (count < 10) {
-                            weight = 0;
-                        } else if (count < 30) {
-                            double k = 0.1; // 控制增长速率的参数
-                            double numerator = 1 - Math.exp(-k * (count - 10));
-                            double denominator = 1 - Math.exp(-k * 20);
-                            weight = numerator / denominator;
-                        } else {
-                            weight = 1;
-                        }
+        #                 // 计算置信度权重
+        #                 double weight;
+        #                 if (count < 10) {
+        #                     weight = 0;
+        #                 } else if (count < 30) {
+        #                     double k = 0.1; // 控制增长速率的参数
+        #                     double numerator = 1 - Math.exp(-k * (count - 10));
+        #                     double denominator = 1 - Math.exp(-k * 20);
+        #                     weight = numerator / denominator;
+        #                 } else {
+        #                     weight = 1;
+        #                 }
 
-                        // 计算可信度评分
-                        double credibilityScore;
-                        if (count == 0) {
-                            credibilityScore = platformAverageRating;
-                        } else {
-                            credibilityScore = weight * rating + (1 - weight) * platformAverageRating;
-                        }
+        #                 // 计算可信度评分
+        #                 double credibilityScore;
+        #                 if (count == 0) {
+        #                     credibilityScore = platformAverageRating;
+        #                 } else {
+        #                     credibilityScore = weight * rating + (1 - weight) * platformAverageRating;
+        #                 }
 
-                        // 将评分归一化到 0-1 范围
-                        double normalizedCredibilityScore = credibilityScore / 5.0;
+        #                 // 将评分归一化到 0-1 范围
+        #                 double normalizedCredibilityScore = credibilityScore / 5.0;
 
-                        // 将评分映射到 3.5-5.0 范围
-                        double finalScore = 3.5 + (normalizedCredibilityScore * 1.5);
+        #                 // 将评分映射到 3.5-5.0 范围
+        #                 double finalScore = 3.5 + (normalizedCredibilityScore * 1.5);
 
-                        // 返回最终评分
-                        return finalScore * params.weight;
-                    """,
-                    "params": {
-                        "weight": self.google_review_weight / self.sum_weight,
-                    }
-                }
-            }
-        })
+        #                 // 返回最终评分
+        #                 return finalScore * params.weight;
+        #             """,
+        #             "params": {
+        #                 "weight": self.google_review_weight / self.sum_weight,
+        #             }
+        #         }
+        #     }
+        # })
 
         # 添加距离脚本
         if self.params.lat and self.params.lon:
@@ -212,12 +213,12 @@ class RequestOfferingSearch(AbstractRequest):
                     "query": {"match_all": {}},
                     "script": {
                         "source": """
-                            double finalScore = 3.5;
+                            double finalScore = 10;
                             if (doc['location.geo_info'].size() > 0 && params.lat != null && params.lon != null) {
                                 double distance = doc['location.geo_info'].arcDistance(params.lat, params.lon) / 1609.34; // 距离转换为英里
                                 double decayFactor = Math.exp(-0.1 * distance); // 使用指数衰减，k=0.1
-                                double normalizedDecayFactor = decayFactor * 2.5; // 归一化到 0-2.5 范围
-                                finalScore = 3.5 + (normalizedDecayFactor / 2.5) * 1.5; // 映射到 3.5-5.0 范围
+                                double normalizedDecayFactor = decayFactor; // 归一化到 0-2.5 范围
+                                finalScore = 10 + (normalizedDecayFactor) * 10; // 映射到 3.5-5.0 范围
                             }
                             return finalScore * params.weight;
                         """,
@@ -232,20 +233,31 @@ class RequestOfferingSearch(AbstractRequest):
 
         # 添加搜索条件
         if self.params.search:
-            query["query"]["bool"]["filter"].append({
-                "multi_match": {
+            query["query"]["bool"]["must"].append({
+                "function_score": {
+                "query": {
+                    "multi_match": {
                     "query": self.params.search,
                     "fields": [
                         "activity",
-                        "activityCategory",
-                        "offeringName",
-                        "businessFullName",
-                        "offeringInsightSummary"
+                        "activityCategory"
                     ],
                     "type": "most_fields",
                     "fuzziness": "1",
-                    "operator": "or"
-                }
+                    "operator": "or",
+                    "boost": 8
+                    }
+                },
+                "functions": [
+                    {
+                    "script_score": {
+                        "script": {
+                        "source": "Math.min(70, _score)"
+                        }
+                    }
+                    }
+                ],
+                "boost_mode": "replace"}
             })
             # 增加完美匹配
             query["query"]["bool"]["should"].append({
@@ -438,7 +450,7 @@ class RequestOfferingSearch(AbstractRequest):
                     hit['_source']['locationDisplayName'] = ''
 
                 if 'teyaScore' not in hit['_source']:
-                    hit['_source']['teyaScore'] = hit['_score']
+                    hit['_source']['teyaScore'] = min(5, hit['_score'] / 90 * 5)
 
                 if 'distance' not in hit['_source']:
                     hit['_source']['distance'] =  calculate_distance(self.params.lat, self.params.lon, hit['_source']['location']['lat'], hit['_source']['location']['lon'])
