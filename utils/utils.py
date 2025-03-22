@@ -1,4 +1,5 @@
 from pyzipcode import ZipCodeDatabase
+from geopy.distance import geodesic
 
 def transform_interests(interests):
     """将 interests 列表转换为指定的字典格式
@@ -55,3 +56,9 @@ def parse_location(location_data):
         'lat': geo_info.get('lat', ''),
         'lon': geo_info.get('lon', '')
     }
+
+# 计算距离
+def calculate_distance(row_lat, row_lon, my_lat, my_lon):
+    if row_lat is None or row_lon is None or my_lat is None or my_lon is None:
+        return None
+    return geodesic((row_lat, row_lon), (my_lat, my_lon)).miles

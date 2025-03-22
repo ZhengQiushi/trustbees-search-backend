@@ -125,6 +125,11 @@ class RequestBusinessFullName(AbstractRequest):
 
 
 class RequestOfferingSearch(AbstractRequest):
+    def __init__(self, request_args):
+        super().__init__(request_args)
+        self.distance_weight = 7
+        self.google_review_weight = 3
+        self.sum_weight = self.distance_weight + self.google_review_weight
     def parse_args(self):
         return SearchOfferingParams(self.request_args)
 
@@ -150,73 +155,150 @@ class RequestOfferingSearch(AbstractRequest):
             }
         }
 
-        if self.params.search:
+        # 添加评分脚本
+        query["query"]["bool"]["must"].append({
+            "script_score": {
+                "query": {"match_all": {}},
+                "script": {
+                    "source": """
+                        double platformAverageRating = 0;
+                        double threshold = 20.0; // 评论数阈值
+
+                        // 获取店铺评分和评论数
+                        double rating = doc['googleReviewRating'].size() > 0 ? doc['googleReviewRating'].value : 0;
+                        double count = doc['googleReviewCount'].size() > 0 ? doc['googleReviewCount'].value : 0;
+
+                        // 计算置信度权重
+                        double weight;
+                        if (count < 10) {
+                            weight = 0;
+                        } else if (count < 30) {
+                            double k = 0.1; // 控制增长速率的参数
+                            double numerator = 1 - Math.exp(-k * (count - 10));
+                            double denominator = 1 - Math.exp(-k * 20);
+                            weight = numerator / denominator;
+                        } else {
+                            weight = 1;
+                        }
+
+                        // 计算可信度评分
+                        double credibilityScore;
+                        if (count == 0) {
+                            credibilityScore = platformAverageRating;
+                        } else {
+                            credibilityScore = weight * rating + (1 - weight) * platformAverageRating;
+                        }
+
+                        // 将评分归一化到 0-1 范围
+                        double normalizedCredibilityScore = credibilityScore / 5.0;
+
+                        // 将评分映射到 3.5-5.0 范围
+                        double finalScore = 3.5 + (normalizedCredibilityScore * 1.5);
+
+                        // 返回最终评分
+                        return finalScore * params.weight;
+                    """,
+                    "params": {
+                        "weight": self.google_review_weight / self.sum_weight,
+                    }
+                }
+            }
+        })
+
+        # 添加距离脚本
+        if self.params.lat and self.params.lon:
             query["query"]["bool"]["must"].append({
+                "script_score": {
+                    "query": {"match_all": {}},
+                    "script": {
+                        "source": """
+                            double finalScore = 3.5;
+                            if (doc['location.geo_info'].size() > 0 && params.lat != null && params.lon != null) {
+                                double distance = doc['location.geo_info'].arcDistance(params.lat, params.lon) / 1609.34; // 距离转换为英里
+                                double decayFactor = Math.exp(-0.1 * distance); // 使用指数衰减，k=0.1
+                                double normalizedDecayFactor = decayFactor * 2.5; // 归一化到 0-2.5 范围
+                                finalScore = 3.5 + (normalizedDecayFactor / 2.5) * 1.5; // 映射到 3.5-5.0 范围
+                            }
+                            return finalScore * params.weight;
+                        """,
+                        "params": {
+                            "lat": self.params.lat,
+                            "lon": self.params.lon,
+                            "weight": self.distance_weight / self.sum_weight
+                        }
+                    }
+                }
+            })
+
+        # 添加搜索条件
+        if self.params.search:
+            query["query"]["bool"]["filter"].append({
                 "multi_match": {
                     "query": self.params.search,
                     "fields": [
-                        "activity^5",
-                        "activityCategory^5",
-                        "offeringName^3",
-                        "businessFullName^1",
-                        "offeringInsightSummary^1"
+                        "activity",
+                        "activityCategory",
+                        "offeringName",
+                        "businessFullName",
+                        "offeringInsightSummary"
                     ],
                     "type": "most_fields",
                     "fuzziness": "1",
-                    "operator": "or",
-                    # "minimum_should_match": "50%"
+                    "operator": "or"
                 }
             })
             # 增加完美匹配
             query["query"]["bool"]["should"].append({
                 "bool": {
                     "should": [
-                    {
-                        "term": {
-                        "businessFullName.keyword": {
-                            "value": self.params.search,
-                            "boost": 10
+                        {
+                            "term": {
+                                "businessFullName.keyword": {
+                                    "value": self.params.search,
+                                    "boost": 10
+                                }
+                            }
                         }
-                        }
-                    }
                     ]
                 }
-                })
-        else:
-            query["query"]["bool"]["must"].append({
-                "match_all": {}
             })
 
+        # 添加地理位置过滤条件
         if self.params.lat and self.params.lon and self.params.radius:
-            query["query"]["bool"]["should"].append({
+            query["query"]["bool"]["filter"].append({
                 "bool": {
-                    "must": [
+                    "should": [
                         {
-                            "geo_distance": {
-                                "distance": f"{self.params.radius}miles",
-                                "location.geo_info": {
-                                    "lat": self.params.lat,
-                                    "lon": self.params.lon
-                                }
+                            "bool": {
+                                "must": [
+                                    {
+                                        "geo_distance": {
+                                            "distance": f"{self.params.radius}miles",
+                                            "location.geo_info": {
+                                                "lat": self.params.lat,
+                                                "lon": self.params.lon
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "term": {
+                                            "locationType": "in_person"
+                                        }
+                                    }
+                                ]
                             }
                         },
                         {
                             "term": {
-                                "locationType": "in_person"
+                                "locationType": "online"
                             }
                         }
-                    ]
+                    ],
+                    "minimum_should_match": 1
                 }
             })
 
-        query["query"]["bool"]["should"].append({
-            "term": {
-                "locationType": "online"
-            }
-        })
-
-        query["query"]["bool"]["minimum_should_match"] = 1
-
+        # 添加年龄过滤条件
         if self.params.ages:
             for age in self.params.ages:
                 query["query"]["bool"]["filter"].append({
@@ -228,6 +310,7 @@ class RequestOfferingSearch(AbstractRequest):
                     }
                 })
 
+        # 添加营地类型过滤条件
         if self.params.camp_types and "AnyType" not in self.params.camp_types:
             query["query"]["bool"]["filter"].append({
                 "bool": {
@@ -237,6 +320,7 @@ class RequestOfferingSearch(AbstractRequest):
                 }
             })
 
+        # 添加营地选项过滤条件
         if self.params.camp_options:
             indoor_selected = "Indoor" in self.params.camp_options
             outdoor_selected = "Outdoor" in self.params.camp_options
@@ -352,6 +436,12 @@ class RequestOfferingSearch(AbstractRequest):
                 if 'locationType' in hit['_source'] and hit['_source']['locationType'] == 'online':
                     # 临时处理
                     hit['_source']['locationDisplayName'] = ''
+
+                if 'teyaScore' not in hit['_source']:
+                    hit['_source']['teyaScore'] = hit['_score']
+
+                if 'distance' not in hit['_source']:
+                    hit['_source']['distance'] =  calculate_distance(self.params.lat, self.params.lon, hit['_source']['location']['lat'], hit['_source']['location']['lon'])
                     
             return response
         return offering_postprocess(response)
@@ -402,9 +492,8 @@ def business_postprocess(response):
             contact_phone = hit['_source']['contactPhone']
             hit['_source']['contactPhone'] = transform_contact_phone(contact_phone)
 
-        # todo 临时处理
         if 'teyaScore' not in hit['_source']:
-            hit['_source']['teyaScore'] = 0
+            hit['_source']['teyaScore'] = hit['_source']['_score']
         
         # 处理 mainOfferingAddress 字段
         if 'mainOfferingAddress' in hit['_source']:

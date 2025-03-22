@@ -10,7 +10,7 @@ import random
 # 将项目根目录添加到 sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from app import app  # 替换为你的 Flask 应用模块名
-
+import global_vars
 # 活动列表
 ACTIVITIES = [
     "Sports", "Arts", "General", "Academic", "Life Skills", "Social"
@@ -112,6 +112,7 @@ class FlaskAppTestCase(unittest.TestCase):
         # 创建测试客户端
         self.app = app.test_client()
         self.app.testing = True
+        global_vars.init_globals("/Users/lion/Project/trustbees-search-backend/config.env")
 
     def send_request(self, query, zip_code, radius, is_detail_search, age, camp_types, camp_options):
         """发送请求并返回响应时间和状态码"""

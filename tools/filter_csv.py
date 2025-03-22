@@ -9,12 +9,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from utils.utils import *
 
 # 定义给定的经纬度
-zip_code = '07072'
+zip_code = '07078'
 my_lat, my_lon = get_lat_lon_from_zip(zip_code)
 	
-path = "/Users/lion/Project/trustbees-search-backend/tests/functional/"
+path = "/Users/lion/Project/trustbees-search-backend/"
 # 读取 CSV 文件
-df = pd.read_csv(path + "offering_test.csv")
+df = pd.read_csv(path + "offering_dev.csv")
 
 # 解析 mainOfferingAddress 列，提取 lat 和 lon
 def parse_location(address):
